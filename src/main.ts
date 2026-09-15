@@ -1316,7 +1316,7 @@ class EvolutionSettingTab extends PluginSettingTab {
       this.renderFocused(focus);
       return;
     }
-    new Setting(containerEl).setName("Evolution homepage").setHeading();
+    new Setting(containerEl).setName("General（通用）").setHeading();
     containerEl.createEl("p", { text: "Every path is vault-relative. Settings never include files from the dashboard author’s vault." });
     this.themeSettings(containerEl);
     this.fontSettings(containerEl);
