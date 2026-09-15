@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   build:
@@ -29,10 +31,19 @@ jobs:
           cp main.js manifest.json styles.css dist
           echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/main.js
+            dist/manifest.json
+            dist/styles.css
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ steps.build.outputs.tag_name }}
+          body: "Release ${{ steps.build.outputs.tag_name }} of Evolution homepage. See commit history for details."
           draft: false
           prerelease: false
           files: |

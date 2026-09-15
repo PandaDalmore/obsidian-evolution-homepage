@@ -125,7 +125,7 @@
 .evolution-grid { display: flex; flex-direction: column; gap: 18px; flex: 1 1 auto; min-height: 0; }
 .evolution-split { display: flex; align-items: stretch; gap: 18px; flex: 1 1 auto; min-height: 0; }
 /* 空列不占宽度，剩下的那列自动铺满。 */
-.evolution-column.is-empty { flex-grow: 0 !important; min-height: 0; overflow: hidden; }
+.evolution-column.is-empty { flex-grow: 0; min-height: 0; overflow: hidden; }
 /* 每列是自己的滚动容器：一边上下滑不影响另一边。底部留 8px 给卡片底边的拖拽横杠。
    方向用 row + wrap：整行的卡片占满一行，半宽的卡片两两并排，剩下的自动换行。 */
 .evolution-column { display: flex; flex-direction: row; flex-wrap: wrap; align-items: flex-start; align-content: flex-start; gap: 18px; min-width: 0; flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-bottom: 8px; }
@@ -148,7 +148,7 @@
 .evolution-card__header--bare { position: absolute; top: 14px; right: 14px; margin: 0; z-index: 2; }
 .evolution-card__header--bare ~ .evolution-calendar__month,
 .evolution-card__header--bare ~ .evolution-empty { padding-right: 30px; }
-.evolution-card__title { margin: 0; font-size: calc(1rem * var(--evolution-font-scale, 1)); color: var(--evolution-module, var(--evolution-heading)); }
+.evolution-card__title { margin: 0; font-size: calc(1rem * var(--evolution-font-scale, 1)); font-weight: 600; color: var(--evolution-module, var(--evolution-heading)); }
 .evolution-icon-button { border: 0; cursor: pointer; color: var(--evolution-muted, var(--text-muted)); background: transparent; padding: 4px; border-radius: 6px; }
 .evolution-icon-button:hover { color: var(--evolution-text, var(--text-normal)); background: var(--background-modifier-hover); }
 

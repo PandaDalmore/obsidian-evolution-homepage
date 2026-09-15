@@ -313,9 +313,8 @@ export default class EvolutionPlugin extends Plugin {
     this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.scheduleRefresh()));
   }
 
-  onunload(): void {
-    this.app.workspace.detachLeavesOfType(VIEW_TYPE_EVOLUTION);
-  }
+  // 官方规范：不要在 onunload 里 detach leaves，否则插件重载时用户摆好的布局会被重置。
+  // 视图与事件都走 registerView / registerEvent 自动清理，这里什么都不用做。
 
   async loadSettings(): Promise<void> {
     const saved = (await this.loadData()) as Partial<EvolutionSettings> | null;
@@ -703,7 +702,7 @@ class EvolutionView extends ItemView {
     const shell = root.createDiv({ cls: isModule ? ["evolution-card-shell", `evolution-card-shell--${focus}`] : "evolution-card-shell" });
     const card = shell.createDiv({ cls: isModule ? ["evolution-card", `evolution-card--${focus}`] : "evolution-card" });
     const header = card.createDiv({ cls: title ? "evolution-card__header" : ["evolution-card__header", "evolution-card__header--bare"] });
-    if (title) header.createEl("h2", { cls: "evolution-card__title", text: title });
+    if (title) header.createDiv({ cls: "evolution-card__title", text: title });
     const settings = header.createEl("button", { cls: "evolution-icon-button", attr: { "aria-label": `Configure ${title ?? focus ?? "module"}` } });
     setIcon(settings, "settings-2");
     settings.addEventListener("click", () => this.plugin.openSettings(focus));
@@ -1317,7 +1316,7 @@ class EvolutionSettingTab extends PluginSettingTab {
       this.renderFocused(focus);
       return;
     }
-    containerEl.createEl("h2", { text: "Evolution homepage" });
+    new Setting(containerEl).setName("Evolution homepage").setHeading();
     containerEl.createEl("p", { text: "Every path is vault-relative. Settings never include files from the dashboard author’s vault." });
     this.themeSettings(containerEl);
     this.fontSettings(containerEl);
@@ -1342,7 +1341,7 @@ class EvolutionSettingTab extends PluginSettingTab {
   }
 
   private themeSettings(root: HTMLElement): void {
-    root.createEl("h3", { cls: "evolution-settings-anchor--theme", text: "Theme（主题）" });
+    new Setting(root).setName("Theme（主题）").setHeading();
     root.createEl("p", { text: "配色取自 obsidian-color-boost 的四套预设。主题只改主页自己的文字、描边和模块强调色，底色保持中性不染色；库里其它笔记界面一概不动。" });
 
     // 色卡 + 一张迷你卡片，选之前就能看到实际效果。用的是主页同一套 class，预览即所得。
@@ -1367,7 +1366,7 @@ class EvolutionSettingTab extends PluginSettingTab {
 
       const demo = preview.createDiv({ cls: ["evolution-card", "evolution-card--diary"] });
       const header = demo.createDiv({ cls: "evolution-card__header" });
-      header.createEl("h2", { cls: "evolution-card__title", text: "Diary（日记）" });
+      header.createDiv({ cls: "evolution-card__title", text: "Diary（日记）" });
       const body = demo.createDiv({ cls: "evolution-theme-preview__body" });
       body.createDiv({ text: "这是今天的日记示例文字。" });
       body.createDiv({ cls: "evolution-theme-preview__meta", text: "记录 / 2026.09.14" });
@@ -1422,16 +1421,16 @@ class EvolutionSettingTab extends PluginSettingTab {
   }
 
   private fontSettings(root: HTMLElement): void {
-    root.createEl("h3", { cls: "evolution-settings-anchor--font", text: "Font size（字号）" });
+    new Setting(root).setName("Font size（字号）").setHeading();
     dropdownSetting(root, "整体字号", "主页所有文字统一缩放一档。默认「小」，比 Obsidian 正文字号小一号；觉得紧就调回「标准」或「大」。",
       this.plugin.settings.fontScale, FONT_SCALE_LABEL, async (value) => {
-        this.plugin.settings.fontScale = value as FontScaleId;
+        this.plugin.settings.fontScale = value;
         await this.plugin.saveSettings();
       });
   }
 
   private bannerSettings(root: HTMLElement): void {
-    root.createEl("h3", { cls: "evolution-settings-anchor--banner", text: "Banner and slogan（横幅与标语）" });
+    new Setting(root).setName("Banner and slogan（横幅与标语）").setHeading();
     textSetting(root, "Banner image", "库内相对路径或 https 链接。不想手写路径，用下面的「添加图片」直接从本地上传。", this.plugin.settings.banner.image, async (value) => { this.plugin.settings.banner.image = value; await this.plugin.saveSettings(); });
     new Setting(root).setName("添加图片").setDesc("从本地选择一张图片，上传后保存在库根目录。").addButton((btn) => btn.setButtonText("选择并上传").onClick(() => void this.uploadBannerImage()));
     textSetting(root, "Banner title", "Main heading shown over the banner.", this.plugin.settings.banner.title, async (value) => { this.plugin.settings.banner.title = value; await this.plugin.saveSettings(); });
@@ -1446,7 +1445,7 @@ class EvolutionSettingTab extends PluginSettingTab {
 
   /** 模块布局：每个模块放左列还是右列，以及从上到下的顺序。 */
   private layoutSettings(root: HTMLElement): void {
-    root.createEl("h3", { cls: "evolution-settings-anchor--layout", text: "Layout（模块布局）" });
+    new Setting(root).setName("Layout（模块布局）").setHeading();
     root.createEl("p", { cls: "evolution-settings__note", text: "主页上能直接动手的只有两件事：按住卡片空白处上下拖动换顺序（只在同一列里挪），拖卡片底边的小横杠改高度（双击横杠恢复自动高度）。换列、改宽窄都在这一页做。" });
     root.createEl("p", { cls: "evolution-settings__note", text: "每个模块都能放左列或右列，用 ↑ / ↓ 调整上下顺序。顺序是整条列表通用的：同列内按这个顺序从上往下排。" });
     root.createEl("p", { cls: "evolution-settings__note", text: "「半宽」的模块两两并排：同一列里两条半宽就横着放一起，落单的那条自己占满整行。想在右列横放两个模块，把那两个都切成半宽就行。左右怎么摆只在设置里改，主页上的拖拽只管上下顺序。" });
@@ -1505,7 +1504,7 @@ class EvolutionSettingTab extends PluginSettingTab {
   }
 
   private async uploadBannerImage(): Promise<void> {
-    const input = document.createElement("input");
+    const input = createEl("input");
     input.type = "file";
     input.accept = "image/*";
     input.onchange = async () => {
@@ -1528,7 +1527,7 @@ class EvolutionSettingTab extends PluginSettingTab {
   }
 
   private diarySettings(root: HTMLElement): void {
-    root.createEl("h3", { cls: "evolution-settings-anchor--diary", text: "Diary（日记）" });
+    new Setting(root).setName("Diary（日记）").setHeading();
     textSetting(root, "日记根目录", "年份目录之上的那一层，可用 {YYYY} {MM} {DD}。留空则沿用核心「日记」插件的目录。", this.plugin.settings.diary.folder, async (value) => { this.plugin.settings.diary.folder = value; await this.plugin.saveSettings(); });
     textSetting(root, "年份子目录", "追加在根目录之后的一层，默认 {YYYY}年。留空表示不分年份。", this.plugin.settings.diary.yearPattern, async (value) => { this.plugin.settings.diary.yearPattern = value; await this.plugin.saveSettings(); });
     textSetting(root, "日记模板", "留空则沿用核心「日记」插件的模板，支持 {{date:YYYY.MM.DD}} 等变量。", this.plugin.settings.diary.template, async (value) => { this.plugin.settings.diary.template = value; await this.plugin.saveSettings(); });
@@ -1537,12 +1536,12 @@ class EvolutionSettingTab extends PluginSettingTab {
   }
 
   private taskSettings(root: HTMLElement): void {
-    root.createEl("h3", { cls: "evolution-settings-anchor--tasks", text: "Open tasks（待办任务）" });
+    new Setting(root).setName("Open tasks（待办任务）").setHeading();
     root.createEl("p", { cls: "evolution-settings__note", text: "主页待办卡片顶部可以直接添加任务：写一行字回车即可，不用先打开笔记。截止时间和优先级是可选输入，填了会按 Tasks 插件的格式写进同一行，例如「- [ ] 交周报 ⏫ 📅 2026-09-20」。" });
     root.createEl("p", { cls: "evolution-settings__note", text: "每条任务右侧有铅笔按钮，点开就地改内容、截止时间、优先级，回车后直接改写原笔记里那一行；已过期的截止日期会标红。" });
     dropdownSetting(root, "完成日期（✅）", "在主页勾选完成时，要不要在行尾补一条 ✅ YYYY-MM-DD。主页自己认这个符号（会显示成「上次完成」徽章），所以不装 Tasks 插件也照样有意义；装了 Tasks 的话它那边也统计得到。",
       this.plugin.settings.tasks.doneDate, DONE_DATE_LABEL, async (value) => {
-        this.plugin.settings.tasks.doneDate = value as DoneDateMode;
+        this.plugin.settings.tasks.doneDate = value;
         await this.plugin.saveSettings();
       });
     textSetting(root, "Task folders", "Comma-separated folders. Tasks in every descendant note are included.", this.plugin.settings.tasks.folders.join(", "), async (value) => { this.plugin.settings.tasks.folders = splitPaths(value); await this.plugin.saveSettings(); });
@@ -1550,14 +1549,14 @@ class EvolutionSettingTab extends PluginSettingTab {
   }
 
   private projectSettings(root: HTMLElement): void {
-    root.createEl("h3", { cls: "evolution-settings-anchor--projects", text: "Active notes（活跃笔记）" });
+    new Setting(root).setName("Active notes（活跃笔记）").setHeading();
     textSetting(root, "Note folders", "Comma-separated folders; leave blank to search the whole vault.", this.plugin.settings.projects.folders.join(", "), async (value) => { this.plugin.settings.projects.folders = splitPaths(value); await this.plugin.saveSettings(); });
     textSetting(root, "Required tags", "多个标签用英文逗号「,」分隔，例如“项目,关注,daily”——任一标签命中即匹配（OR 关系，不需要全中）。带不带前导 # 都行，前后空格自动忽略。嵌套子标签直接写「项目/关注」。标签需与笔记里实际写的完全一致，比如笔记里写 #AI，这里也写 AI，写 ai 不会命中。", this.plugin.settings.projects.tags.join(", "), async (value) => { this.plugin.settings.projects.tags = splitPaths(value); await this.plugin.saveSettings(); });
     textSetting(root, "Maximum notes", "How many recently updated notes to display.", String(this.plugin.settings.projects.limit), async (value) => { this.plugin.settings.projects.limit = clampNumber(value, 1, 50, 12); await this.plugin.saveSettings(); });
   }
 
   private shortcutSettings(root: HTMLElement): void {
-    root.createEl("h3", { cls: "evolution-settings-anchor--shortcuts", text: "Shortcuts（快捷入口）" });
+    new Setting(root).setName("Shortcuts（快捷入口）").setHeading();
     root.createEl("p", { text: "每条入口只填两项：「名称」是主页上显示的字，「链接」是要打开的东西。加几条就有几条，主页会按顺序往下排。" });
     root.createEl("p", { cls: "evolution-settings__note", text: "链接可以填网页地址（https://…）、库内笔记路径（例如 工作/项目/周复盘.md）、或本地文件的 file:/// 链接与绝对路径。不用选类型，点开时自动判断。" });
     root.createEl("p", { cls: "evolution-settings__note", text: "按住任意一条入口上下拖动，可以调整主页上从上到下的顺序。每条右上角有 ↑ / ↓ 按钮，做不到拖动时也能用。" });
@@ -2053,17 +2052,17 @@ function parseTaskLine(rest: string): { raw: string; text: string; due: string; 
   // Tasks 写在行尾的其它元数据：完成日期、重复规则、计划/开始日期、任务 id。
   // 前四个做成徽章，id 那串字符没意义，直接丢掉。
   const done = raw.match(/✅\s*(\d{4}-\d{2}-\d{2})/)?.[1] ?? "";
-  const repeat = raw.match(/🔁\s*([^📅⏫🔼🔽🔺✅🆔⏳🛫]*)/)?.[1] ?? "";
+  const repeat = raw.match(/🔁\s*([^📅⏫🔼🔽🔺✅🆔⏳🛫]*)/u)?.[1] ?? "";
   const scheduled = raw.match(/⏳\s*(\d{4}-\d{2}-\d{2})/)?.[1] ?? "";
   const start = raw.match(/🛫\s*(\d{4}-\d{2}-\d{2})/)?.[1] ?? "";
   const text = raw
     .replace(/📅\s*\d{4}-\d{2}-\d{2}/g, " ")
     .replace(/✅\s*\d{4}-\d{2}-\d{2}/g, " ")
-    .replace(/🔁[^📅⏫🔼🔽🔺✅🆔⏳🛫]*/g, " ")
+    .replace(/🔁[^📅⏫🔼🔽🔺✅🆔⏳🛫]*/gu, " ")
     .replace(/⏳\s*\d{4}-\d{2}-\d{2}/g, " ")
     .replace(/🛫\s*\d{4}-\d{2}-\d{2}/g, " ")
     .replace(/🆔\s*[A-Za-z0-9]+/g, " ")
-    .replace(/[🔺⏫🔼🔽]️?/g, " ")
+    .replace(/[🔺⏫🔼🔽]\uFE0F?/gu, " ")
     .replace(/\[due::[^\]]*\]/gi, " ")
     .replace(/\[priority::[^\]]*\]/gi, " ")
     .replace(/\s{2,}/g, " ")
@@ -2257,7 +2256,7 @@ function matchesTags(app: App, file: TFile, desired: string[]): boolean {
   if (!desired.length) return true;
   const cache = app.metadataCache.getFileCache(file);
   const inline = cache?.tags?.map((tag) => tag.tag.replace(/^#/, "")) ?? [];
-  const frontmatter = cache?.frontmatter?.tags;
+  const frontmatter: unknown = cache?.frontmatter?.tags;
   const yaml = Array.isArray(frontmatter) ? frontmatter.map(String) : typeof frontmatter === "string" ? [frontmatter] : [];
   const tags = new Set([...inline, ...yaml].map((tag) => tag.replace(/^#/, "")));
   return desired.some((tag) => tags.has(tag.replace(/^#/, "")));
