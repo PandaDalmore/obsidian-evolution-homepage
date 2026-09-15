@@ -4,7 +4,7 @@ Evolution 是一个可配置的 Obsidian 主页插件。它以笔记本身作为
 
 > English Version：[Evolution (English)](#evolution-english)
 
-## V 1.0.0 功能
+## V 1.0.1 功能
 
 - **横幅**：图片 + 标题 + 描述；标题和描述各自单独设置对齐方式（左 / 中 / 右）和颜色
 - **独立的文字标语**
@@ -139,7 +139,7 @@ Evolution 做的每件事都走 Obsidian 自己的 API，只有三处例外—�
 
 Evolution is a configurable Obsidian dashboard. It keeps notes as the source of truth and provides a configurable banner, daily-note calendar, shortcuts, task list, and active-note list.
 
-## Version 1.0.0
+## Version 1.0.1
 
 - Banner with an image, title, and description; title and description each have their own alignment (left / center / right) and colour
 - Separate text slogan
