@@ -1,0 +1,10 @@
+# 发版附件是在 Linux runner 上 checkout 后打包的，统一 LF 才能保证
+# 仓库里的 styles.css / main.js 和 Release 附件逐字节一致。
+* text=auto eol=lf
+
+# 图片按二进制处理，避免被当成文本改动行尾
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.svg text eol=lf
