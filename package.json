@@ -14,7 +14,8 @@
   ],
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+    "check:version": "node scripts/check-version.mjs",
+    "build": "npm run check:version && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
