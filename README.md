@@ -2,6 +2,8 @@
 
 Evolution 是一个可配置的 Obsidian 主页插件。它以笔记本身作为唯一数据源，提供可配置的横幅、日记日历、快捷入口、待办清单和活跃笔记列表。
 
+作者公众号：**达尔进化论**（PandaDalmore），写个人成长、Obsidian、AI 和系统。加我微信 **PandaDal2** 一起聊插件用法。
+
 > English Version：[Evolution (English)](#evolution-english)
 
 ## V 1.0.1 功能
@@ -138,6 +140,8 @@ Evolution 做的每件事都走 Obsidian 自己的 API，只有三处例外—�
 # Evolution (English)
 
 Evolution is a configurable Obsidian dashboard. It keeps notes as the source of truth and provides a configurable banner, daily-note calendar, shortcuts, task list, and active-note list.
+
+By PandaDal, author of the WeChat public account **达尔进化论** (PandaDalmore), writing about personal growth, Obsidian, AI, and systems. Reach me on WeChat at **PandaDal2**.
 
 ## Version 1.0.1
 
