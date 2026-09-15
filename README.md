@@ -6,7 +6,7 @@ Evolution 是一个可配置的 Obsidian 主页插件。它以笔记本身作为
 
 > English Version：[Evolution (English)](#evolution-english)
 
-## V 1.0.1 功能
+## V 1.0.2 功能
 
 - **横幅**：图片 + 标题 + 描述；标题和描述各自单独设置对齐方式（左 / 中 / 右）和颜色
 - **独立的文字标语**
@@ -102,7 +102,7 @@ Evolution 只在插件设置里保存布局和数据源选择。它不把库数�
 
 Evolution 做的每件事都走 Obsidian 自己的 API，只有三处例外——而这三处都是**你**配置、**你**触发的。后台不发任何东西，启动时不跑任何东西，没有遥测、没有统计、没有自动更新检查。
 
-**1. 用系统默认程序打开文件。** 快捷入口的目标如果是库外的绝对路径（比如另一个盘上的表格），会交给 `shell.openPath`，用它所属文件类型的程序打开。Obsidian 没有跨平台的「用默认程序打开非笔记文件」接口，所以这只有桌面端能做：**手机端会跳过这一步并给出提示，而不是静默失败。** 插件不会读回别的程序对那个文件做了什么。
+**1. 用系统默认程序打开文件。** 快捷入口的目标如果是库外的绝对路径（比如另一个盘上的表格），会交给 Electron 的 `shell.openPath`，用它所属文件类型的程序打开。Obsidian 没有跨平台的「用默认程序打开非笔记文件」接口，这条只能借桌面端的宿主能力，因此本插件在 `manifest.json` 里声明了 `isDesktopOnly: true`——**手机上搜不到、也装不了它**。插件不会读回别的程序对那个文件做了什么。
 
 **2. 外部链接。** 长得像 `https://` 或 `mailto:` 的快捷入口目标，通过 `shell.openExternal`（失败时回落 `window.open`）在浏览器里打开。这个 URL 永远只是你自己填进设置的那一个——插件不会自己拼 URL。
 
@@ -111,6 +111,8 @@ Evolution 做的每件事都走 Obsidian 自己的 API，只有三处例外—�
 这三样都不是默认开启的——主页出厂是空的，在你配置了别的东西之前，它一直待在库里。
 
 ## 安装
+
+> **需要桌面版 Obsidian**（Windows / macOS / Linux）。手机版装不了，原因见上面「用系统默认程序打开文件」那一条。
 
 **方式一：手动安装（现在就能用）**
 
@@ -143,7 +145,7 @@ Evolution is a configurable Obsidian dashboard. It keeps notes as the source of 
 
 By PandaDal, author of the WeChat public account **达尔进化论** (PandaDalmore), writing about personal growth, Obsidian, AI, and systems. Reach me on WeChat at **PandaDal2**.
 
-## Version 1.0.1
+## Version 1.0.2
 
 - Banner with an image, title, and description; title and description each have their own alignment (left / center / right) and colour
 - Separate text slogan
@@ -239,7 +241,7 @@ Colored roles are resolved with an order-preserving lightness mapping plus a WCA
 
 Everything Evolution does goes through Obsidian's own APIs, with three exceptions — all three are things **you** configure and **you** trigger. Nothing happens in the background, nothing runs at startup, and there is no telemetry, analytics, or auto-update check.
 
-**1. Opening files in their system app.** A shortcut whose target is an absolute path outside the vault (a spreadsheet on another drive, say) is handed to `shell.openPath` so it opens in whatever app owns that file type. Obsidian has no cross-platform "open with default app" for vault files that are not notes, so this is Electron-only: **on mobile that step is skipped and a notice is shown instead of failing silently.** The plugin never reads back what the other app does with the file.
+**1. Opening files in their system app.** A shortcut whose target is an absolute path outside the vault (a spreadsheet on another drive, say) is handed to Electron's `shell.openPath` so it opens in whatever app owns that file type. Obsidian has no cross-platform "open with default app" for vault files that are not notes, so this borrows a host capability of the desktop app — which is why the plugin declares `isDesktopOnly: true` in its manifest: **it does not appear in the mobile plugin browser and cannot be installed there.** The plugin never reads back what the other app does with the file.
 
 **2. External links.** Shortcut targets that look like `https://` or `mailto:` are opened in your browser via `shell.openExternal` (falling back to `window.open`). The URL is only ever the one you typed into the settings — the plugin composes no URLs of its own.
 

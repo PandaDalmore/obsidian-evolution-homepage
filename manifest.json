@@ -1,9 +1,9 @@
 {
   "id": "evolution-homepage",
   "name": "Evolution homepage",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "minAppVersion": "1.8.0",
   "description": "A configurable personal command center for notes, tasks, and daily reflection.",
   "author": "PandaDal",
-  "isDesktopOnly": false
+  "isDesktopOnly": true
 }
