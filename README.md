@@ -2,9 +2,9 @@
 
 Evolution 是一个可配置的 Obsidian 主页插件。它以笔记本身作为唯一数据源，提供可配置的横幅、日记日历、快捷入口、待办清单和活跃笔记列表。
 
-> 英文版在下方：[Evolution (English)](#evolution-english)
+> English Version：[Evolution (English)](#evolution-english)
 
-## 首个版本的功能
+## V 1.0.0 功能
 
 - **横幅**：图片 + 标题 + 描述；标题和描述各自单独设置对齐方式（左 / 中 / 右）和颜色
 - **独立的文字标语**
@@ -108,11 +108,30 @@ Evolution 做的每件事都走 Obsidian 自己的 API，只有三处例外—�
 
 这三样都不是默认开启的——主页出厂是空的，在你配置了别的东西之前，它一直待在库里。
 
-## 开发
+## 安装
 
-`npm install` 装依赖，然后 `npm run dev`。把 `main.js`、`manifest.json`、`styles.css` 复制到库的 `.obsidian/plugins/evolution-dashboard/` 目录即可本地测试。
+**方式一：手动安装（现在就能用）**
 
-本仓库刻意不含任何个人库路径或数据。所有数据源都从插件设置里选择。
+1. 到本仓库的 [Releases](https://github.com/PandaDalmore/obsidian-evolution-homepage/releases) 页面，下载最新版里的 `main.js`、`manifest.json`、`styles.css` 三个文件。
+2. 在库目录下找到 `.obsidian/plugins/`，新建一个名为 `evolution-dashboard` 的文件夹，把三个文件放进去。文件夹名必须和 manifest 里的插件 id 一致，写成别的名字 Obsidian 认不出来。
+3. 重启 Obsidian（或者到 设置 → 第三方插件，点一下已安装插件旁边的刷新按钮）。
+4. 设置 → 第三方插件 → 关掉「安全模式」，在「已安装插件」列表里找到 **Evolution homepage**，打开开关。
+
+**方式二：用 BRAT 安装**
+
+1. 先在社区插件市场里安装 BRAT。
+2. 打开 BRAT 的设置，点 Add Beta Plugin，填入 `PandaDalmore/obsidian-evolution-homepage`。
+3. 回到 设置 → 第三方插件，找到 Evolution homepage 启用。以后要更新，在 BRAT 里点 Update 就行。
+
+**方式三：社区插件市场（等待上架）**
+
+本插件已提交 Obsidian 社区插件市场审核。通过之后，在 设置 → 第三方插件 → 社区插件市场 里搜索 **Evolution homepage** 即可直接安装，之后跟随市场更新。审核期间请先用上面两种方式。
+
+### 从源码构建
+
+想改代码的话：`npm install` 装依赖，`npm run build` 产出同名的三个文件，覆盖掉上面插件目录里的即可。
+
+本仓库刻意不含任何个人库路径或数据。所有数据源都在安装之后从插件设置里选择。
 
 ---
 
@@ -120,7 +139,7 @@ Evolution 做的每件事都走 Obsidian 自己的 API，只有三处例外—�
 
 Evolution is a configurable Obsidian dashboard. It keeps notes as the source of truth and provides a configurable banner, daily-note calendar, shortcuts, task list, and active-note list.
 
-## First version
+## Version 1.0.0
 
 - Banner with an image, title, and description; title and description each have their own alignment (left / center / right) and colour
 - Separate text slogan
@@ -224,8 +243,27 @@ Everything Evolution does goes through Obsidian's own APIs, with three exception
 
 None of the three is on by default — the dashboard ships empty, and it stays inside the vault until you configure something that says otherwise.
 
-## Development
+## Installation
 
-Install dependencies with `npm install`, then run `npm run dev`. Copy `main.js`, `manifest.json`, and `styles.css` to your vault's `.obsidian/plugins/evolution-dashboard/` directory for local testing.
+**Option 1: manual install (works today)**
 
-The repository intentionally contains no personal vault paths or data. Every data source is selected from the plugin settings.
+1. Go to the [Releases](https://github.com/PandaDalmore/obsidian-evolution-homepage/releases) page and download `main.js`, `manifest.json`, and `styles.css` from the latest release.
+2. Create a folder named `evolution-dashboard` under `.obsidian/plugins/` in your vault and drop the three files in. The folder name has to match the plugin id in `manifest.json` — anything else and Obsidian will not pick it up.
+3. Restart Obsidian (or use the reload button next to Installed plugins in Settings → Community plugins).
+4. In Settings → Community plugins, turn off Restricted mode, then find **Evolution homepage** under Installed plugins and enable it.
+
+**Option 2: BRAT**
+
+1. Install BRAT from the community plugin market first.
+2. Open BRAT's settings, choose Add Beta Plugin, and enter `PandaDalmore/obsidian-evolution-homepage`.
+3. Back in Settings → Community plugins, enable Evolution homepage. Future updates come from BRAT's Update button.
+
+**Option 3: community plugin market (pending review)**
+
+The plugin has been submitted to the official community plugin list. Once it lands, search **Evolution homepage** in Settings → Community plugins → Browse and install from there; updates then follow the market. Until then, use one of the two options above.
+
+### Building from source
+
+To hack on the code: `npm install` for dependencies, `npm run build` to produce the same three files — overwrite the ones in the plugin folder above.
+
+The repository intentionally contains no personal vault paths or data. Every data source is selected from the plugin settings after installation.
