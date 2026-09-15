@@ -1,0 +1,296 @@
+/* ============================================================
+ * Evolution homepage — 样式表
+ * 颜色一律经由 --evolution-* 走，这些变量由插件按「主题」设置注入。
+ * 没选主题（跟随 Obsidian）时它们全部回落到 Obsidian 自己的变量，
+ * 所以「跟随主题」等于完全不覆盖任何颜色。
+ * 选了主题也一样：卡片底、软底永远保持中性，主题只落在文字、
+ * 描边和模块强调色上——染过的底在明暗切换时容易发浑。
+ * ============================================================ */
+
+.evolution-dashboard-view,
+.evolution-theme-preview {
+  --evolution-text: var(--ev-text, var(--text-normal));
+  --evolution-muted: var(--ev-muted, var(--text-muted));
+  --evolution-heading: var(--ev-heading, var(--text-normal));
+  --evolution-accent: var(--ev-accent, var(--interactive-accent));
+  --evolution-card: color-mix(in srgb, var(--background-primary) 88%, var(--background-secondary));
+  --evolution-soft: color-mix(in srgb, var(--background-secondary) 76%, transparent);
+  --evolution-border: var(--ev-border, var(--background-modifier-border));
+  /* 细密网格线用中性色，不跟着主题走：日历几十条线一起上色就吵了 */
+  --evolution-hairline: var(--background-modifier-border);
+  --evolution-module-diary: var(--ev-module-diary, var(--evolution-accent));
+  --evolution-module-shortcuts: var(--ev-module-shortcuts, var(--evolution-accent));
+  --evolution-module-tasks: var(--ev-module-tasks, var(--evolution-accent));
+  --evolution-module-projects: var(--ev-module-projects, var(--evolution-accent));
+}
+
+.evolution-dashboard-view {
+  background: var(--background-primary);
+  color: var(--evolution-text);
+  height: 100%;
+  overflow: auto;
+  /* 字号缩放的兜底值，真正的倍数由插件按「字号」设置写到 .evolution-dashboard 上。 */
+  --evolution-font-scale: 1;
+}
+
+.evolution-dashboard {
+  box-sizing: border-box;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 24px;
+  /* 撑满整个视图高度，这样下面两列才能各自滚动，而不是整页一起滚。 */
+  height: 100%;
+  /* 万一父级没给确定高度，也不至于塌成 0。 */
+  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  /* 整块主页的基准字号乘这个系数；没写死字号的地方（任务、笔记、按钮）都跟着缩。 */
+  font-size: calc(1em * var(--evolution-font-scale, 1));
+}
+
+.evolution-banner {
+  position: relative;
+  min-height: 190px;
+  overflow: hidden;
+  border: 1px solid var(--evolution-border);
+  border-radius: 20px;
+  background: linear-gradient(125deg, var(--interactive-accent), var(--background-secondary-alt));
+  background-position: center;
+  background-size: cover;
+  display: flex;
+  align-items: center;
+}
+
+.evolution-banner__shade {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / var(--evolution-banner-dim, 42%));
+}
+
+.evolution-banner__content {
+  position: relative;
+  z-index: 1;
+  /* 撑满整行，标题/描述才能真的靠左、居中或靠右。 */
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  padding: 28px;
+  color: white;
+}
+
+.evolution-banner__tools {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  display: flex;
+  gap: 8px;
+}
+.evolution-banner__edit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  cursor: pointer;
+  color: #fff;
+  border: 1px solid rgb(255 255 255 / .4);
+  border-radius: 999px;
+  background: rgb(0 0 0 / .38);
+  transition: background .15s ease, border-color .15s ease;
+}
+.evolution-banner__edit:hover { background: rgb(0 0 0 / .6); border-color: rgb(255 255 255 / .75); }
+.evolution-banner__edit svg { width: 16px; height: 16px; }
+
+.evolution-banner__title { margin: 0; color: inherit; font-size: clamp(calc(1.8rem * var(--evolution-font-scale, 1)), calc(4vw * var(--evolution-font-scale, 1)), calc(3rem * var(--evolution-font-scale, 1))); }
+.evolution-banner__description { margin: 8px 0 0; max-width: 760px; color: inherit; opacity: .92; }
+
+/* 标题与描述各自独立选位置：靠左 / 居中 / 靠右。 */
+.evolution-banner__title[data-align="left"],
+.evolution-banner__description[data-align="left"] { text-align: left; }
+.evolution-banner__title[data-align="center"],
+.evolution-banner__description[data-align="center"] { text-align: center; }
+.evolution-banner__title[data-align="right"],
+.evolution-banner__description[data-align="right"] { text-align: right; }
+/* 描述有最大宽度，居中要靠外边距把它推到中间，靠右则整块贴右边。 */
+.evolution-banner__description[data-align="left"] { margin-left: 0; margin-right: auto; }
+.evolution-banner__description[data-align="center"] { margin-left: auto; margin-right: auto; }
+/* 靠右时给右上角的两个编辑按钮让出位置，免得文字压在按钮底下。 */
+.evolution-banner__title[data-align="right"],
+.evolution-banner__description[data-align="right"] { padding-right: 44px; }
+.evolution-slogan { margin: 22px 0; padding: 4px 2px; font-size: calc(1.15rem * var(--evolution-font-scale, 1)); font-weight: 600; text-align: center; color: var(--evolution-muted); }
+
+/* 高度往下传一层层都要 min-height:0，否则 flex 子项撑不进剩余空间。 */
+.evolution-grid { display: flex; flex-direction: column; gap: 18px; flex: 1 1 auto; min-height: 0; }
+.evolution-split { display: flex; align-items: stretch; gap: 18px; flex: 1 1 auto; min-height: 0; }
+/* 空列不占宽度，剩下的那列自动铺满。 */
+.evolution-column.is-empty { flex-grow: 0 !important; min-height: 0; overflow: hidden; }
+/* 每列是自己的滚动容器：一边上下滑不影响另一边。底部留 8px 给卡片底边的拖拽横杠。
+   方向用 row + wrap：整行的卡片占满一行，半宽的卡片两两并排，剩下的自动换行。 */
+.evolution-column { display: flex; flex-direction: row; flex-wrap: wrap; align-items: flex-start; align-content: flex-start; gap: 18px; min-width: 0; flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-bottom: 8px; }
+.evolution-resizer { flex: 0 0 9px; align-self: stretch; min-height: 40px; border-radius: 5px; cursor: col-resize; touch-action: none; background: var(--background-modifier-border); opacity: .35; }
+.evolution-resizer:hover, .evolution-resizer:active { opacity: .9; background: var(--interactive-accent); }
+.evolution-card-shell { position: relative; display: flex; flex-direction: column; min-width: 0; flex: 0 0 100%; }
+/* 半宽：基准 50% 减去半个间距，两条正好并排；落单的那条靠 flex-grow 自己撑满整行。 */
+.evolution-card-shell.is-half { flex: 1 1 calc(50% - 9px); }
+.evolution-card-shell.is-fixed-height .evolution-card { flex: 1; min-height: 0; overflow: auto; }
+.evolution-card-shell.is-dragging { opacity: .4; }
+.evolution-card-resize { position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); width: 48px; height: 14px; border-radius: 7px; cursor: row-resize; touch-action: none; display: flex; align-items: center; justify-content: center; opacity: 0; }
+.evolution-card-shell:hover .evolution-card-resize { opacity: .55; }
+.evolution-card-resize:hover, .evolution-card-resize:active { opacity: 1; }
+.evolution-card-resize::after { content: ""; width: 34px; height: 3px; border-radius: 2px; background: var(--text-faint, var(--text-muted)); }
+/* 插入线：横着占满整行，只提示"插到这一行的上边"。 */
+.evolution-drop-line { flex: 0 0 100%; height: 3px; margin: 7px 0; border-radius: 2px; background: var(--interactive-accent); }
+.evolution-card { position: relative; isolation: isolate; min-width: 0; border: 1px solid var(--evolution-border); border-radius: 16px; background: var(--evolution-card); padding: 18px; box-shadow: 0 8px 24px rgb(0 0 0 / .04); }
+.evolution-card__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+/* 没有标题的卡片：设置按钮浮到右上角，下面的内容让出这条位置，别被压住。 */
+.evolution-card__header--bare { position: absolute; top: 14px; right: 14px; margin: 0; z-index: 2; }
+.evolution-card__header--bare ~ .evolution-calendar__month,
+.evolution-card__header--bare ~ .evolution-empty { padding-right: 30px; }
+.evolution-card__title { margin: 0; font-size: calc(1rem * var(--evolution-font-scale, 1)); color: var(--evolution-module, var(--evolution-heading)); }
+.evolution-icon-button { border: 0; cursor: pointer; color: var(--evolution-muted, var(--text-muted)); background: transparent; padding: 4px; border-radius: 6px; }
+.evolution-icon-button:hover { color: var(--evolution-text, var(--text-normal)); background: var(--background-modifier-hover); }
+
+/* 各模块的强调色。只在选了主题时才挂上，没选主题时标题保持原样。 */
+.is-themed .evolution-card--diary { --evolution-module: var(--evolution-module-diary); }
+.is-themed .evolution-card--shortcuts { --evolution-module: var(--evolution-module-shortcuts); }
+.is-themed .evolution-card--tasks { --evolution-module: var(--evolution-module-tasks); }
+.is-themed .evolution-card--projects { --evolution-module: var(--evolution-module-projects); }
+.is-themed .evolution-card__title::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: .95em;
+  margin-right: 8px;
+  border-radius: 1px;
+  vertical-align: -.08em;
+  background: linear-gradient(90deg, var(--evolution-module, transparent) 0 2px, transparent 2px 5px, var(--evolution-module, transparent) 5px 7px);
+}
+
+.evolution-settings__back { display: inline-block; margin: 0 0 6px; padding: 6px 12px; border: 1px solid var(--evolution-border, var(--background-modifier-border)); border-radius: 8px; cursor: pointer; background: var(--evolution-soft, var(--background-secondary)); color: var(--text-normal); font-size: .9rem; }
+.evolution-settings__back:hover { border-color: var(--interactive-accent); background: var(--background-modifier-hover); }
+.evolution-settings__back-hint { color: var(--evolution-muted, var(--text-muted)); font-size: .82rem; margin: 0 0 14px; }
+.evolution-settings__note { margin: -4px 0 12px; color: var(--evolution-muted, var(--text-muted)); font-size: .84rem; }
+
+/* --- 主题设置：色卡 + 迷你卡片预览 --- */
+.evolution-theme-preview { margin: 12px 0 16px; padding: 14px; border: 1px solid var(--evolution-border); border-radius: 12px; background: var(--evolution-soft); display: flex; flex-direction: column; gap: 12px; }
+.evolution-theme-preview__hint { color: var(--evolution-muted); font-size: .84rem; }
+.evolution-theme-preview__strip { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+.evolution-theme-preview__body { font-size: .9rem; color: var(--evolution-text); }
+.evolution-theme-preview__meta { margin-top: 4px; font-size: .76rem; color: var(--evolution-muted); }
+.evolution-theme-preview .evolution-card { padding: 14px; box-shadow: none; }
+.evolution-theme-swatch { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.evolution-theme-swatch__dot { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--background-modifier-border); }
+.evolution-theme-swatch__label { color: var(--evolution-muted); font-size: .7rem; }
+.evolution-theme-custom { display: flex; flex-direction: column; }
+
+.evolution-shortcuts-editor { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 4px; }
+.evolution-shortcuts-editor__row { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--evolution-border, var(--background-modifier-border)); border-radius: 12px; background: var(--evolution-soft, var(--background-secondary)); }
+.evolution-shortcuts-editor__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.evolution-shortcuts-editor__index { color: var(--evolution-muted, var(--text-muted)); font-size: .82rem; font-weight: 600; }
+.evolution-shortcuts-editor__tools { display: flex; align-items: center; gap: 2px; }
+.evolution-shortcuts-editor__tool svg { width: 15px; height: 15px; }
+.evolution-shortcuts-editor__tool.is-disabled { opacity: .28; cursor: default; }
+.evolution-shortcuts-editor__tool.is-disabled:hover { color: var(--evolution-muted, var(--text-muted)); background: transparent; }
+.evolution-shortcuts-editor__field { display: flex; align-items: center; gap: 8px; }
+.evolution-shortcuts-editor__field-label { flex: none; width: 32px; color: var(--evolution-muted, var(--text-muted)); font-size: .82rem; }
+.evolution-shortcuts-editor__input { flex: 1; min-width: 0; }
+.evolution-shortcuts-editor__footer { display: flex; }
+
+.evolution-layout-editor { display: flex; flex-direction: column; gap: 8px; margin: 12px 0 4px; }
+.evolution-layout-editor__row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--evolution-border, var(--background-modifier-border)); border-radius: 12px; background: var(--evolution-soft, var(--background-secondary)); }
+.evolution-layout-editor__row.is-off { opacity: .5; }
+.evolution-layout-editor__name { display: flex; flex: 1; align-items: baseline; gap: 6px; min-width: 0; font-size: .9rem; }
+.evolution-layout-editor__off { color: var(--evolution-muted, var(--text-muted)); font-size: .74rem; }
+.evolution-layout-editor__sides { display: flex; flex: none; gap: 4px; }
+.evolution-layout-editor__side { padding: 3px 9px; border: 1px solid var(--evolution-border, var(--background-modifier-border)); border-radius: 7px; cursor: pointer; color: var(--evolution-muted, var(--text-muted)); background: transparent; font-size: .78rem; }
+.evolution-layout-editor__side:hover { color: var(--evolution-text, var(--text-normal)); background: var(--background-modifier-hover); }
+.evolution-layout-editor__side.is-active { border-color: var(--evolution-accent, var(--interactive-accent)); color: var(--evolution-accent, var(--interactive-accent)); font-weight: 600; }
+.evolution-layout-editor__tools { display: flex; flex: none; align-items: center; gap: 2px; }
+.evolution-layout-editor__tools svg { width: 15px; height: 15px; }
+.evolution-layout-editor__height, .evolution-layout-editor__span { padding: 3px 7px; border: 1px solid var(--evolution-border, var(--background-modifier-border)); border-radius: 7px; cursor: pointer; color: var(--evolution-muted, var(--text-muted)); background: transparent; font-size: .74rem; font-variant-numeric: tabular-nums; }
+.evolution-layout-editor__height:hover, .evolution-layout-editor__span:hover { color: var(--evolution-text, var(--text-normal)); background: var(--background-modifier-hover); }
+/* 半宽是高亮状态，一眼能看出哪些模块会并排。 */
+.evolution-layout-editor__span.is-half { border-color: var(--evolution-accent, var(--interactive-accent)); color: var(--evolution-accent, var(--interactive-accent)); font-weight: 600; }
+.evolution-layout-editor__height:disabled { opacity: .45; cursor: default; }
+.evolution-layout-editor__tools .is-disabled { opacity: .28; cursor: default; }
+.evolution-layout-editor__tools .is-disabled:hover { color: var(--evolution-muted, var(--text-muted)); background: transparent; }
+
+.evolution-calendar { width: 100%; border-collapse: collapse; table-layout: fixed; text-align: center; font-size: calc(.82rem * var(--evolution-font-scale, 1)); }
+.evolution-calendar th { padding: 6px; color: var(--evolution-muted); font-size: calc(.78rem * var(--evolution-font-scale, 1)); font-weight: 500; }
+.evolution-calendar td { height: 38px; padding: 6px 4px; border: 1px solid var(--evolution-hairline); }
+.evolution-calendar__day { display: block; width: 100%; padding: 4px; border: 0; border-radius: 4px; cursor: pointer; color: inherit; background: transparent; text-decoration: none; }
+.evolution-calendar__day:hover { background: var(--background-modifier-hover); }
+/* 今天：外套一圈淡黄。用 outline 而不是内描边——隔着红/绿的状态底色也看得出来，且不挤占格子。 */
+.evolution-calendar__day--today { outline: 2px solid #f7dc6f; outline-offset: 1px; }
+.evolution-calendar__day--today:not(.evolution-calendar__day--status) { font-weight: 700; color: var(--ev-module-diary, var(--interactive-accent)); }
+/* 状态格的底色、描边、字色都由插件按状态色淡化后写进来，这里只留位置和宽度。 */
+.evolution-calendar__day--status { font-weight: 600; padding: 3px; border: 1px solid transparent; }
+.evolution-calendar__day--status:hover { filter: brightness(1.05); }
+.evolution-calendar__month { display: flex; align-items: center; justify-content: space-between; margin: 0 0 10px; font-size: calc(1.05rem * var(--evolution-font-scale, 1)); font-weight: 600; color: var(--ev-module-diary, var(--evolution-heading)); }
+.evolution-calendar__month-label { flex: 1; text-align: center; }
+.evolution-calendar__month-btn { padding: 2px; }
+
+.evolution-shortcuts { display: flex; flex-direction: column; gap: 8px; }
+.evolution-shortcut { display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--evolution-border); border-radius: 12px; cursor: pointer; color: var(--evolution-text); background: var(--evolution-soft); text-align: left; }
+.evolution-shortcut:hover { border-color: var(--evolution-accent); background: var(--background-modifier-hover); }
+.evolution-shortcut:focus-visible { outline: 2px solid var(--evolution-accent); outline-offset: 1px; }
+.evolution-shortcut__grip { display: flex; flex: none; align-items: center; color: var(--text-faint); cursor: grab; }
+.evolution-shortcut__grip:active { cursor: grabbing; }
+.evolution-shortcut__grip svg { width: 15px; height: 15px; }
+.evolution-shortcut__icon { display: flex; flex: none; align-items: center; color: var(--ev-module-shortcuts, var(--evolution-accent)); }
+.evolution-shortcut__body { min-width: 0; flex: 1; }
+.evolution-shortcut__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: calc(.92rem * var(--evolution-font-scale, 1)); line-height: 1.4; }
+.evolution-shortcut.is-dragging { opacity: .45; }
+.evolution-shortcut.is-drop-before { box-shadow: 0 -3px 0 0 var(--evolution-accent); }
+.evolution-shortcut.is-drop-after { box-shadow: 0 3px 0 0 var(--evolution-accent); }
+
+.evolution-task-add { margin: 0 0 12px; }
+.evolution-task-add__trigger { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 8px 10px; border: 1px dashed var(--evolution-border); border-radius: 9px; cursor: pointer; background: transparent; color: var(--evolution-muted); font-size: calc(.86rem * var(--evolution-font-scale, 1)); }
+.evolution-task-add__trigger:hover { border-color: var(--ev-module-tasks, var(--interactive-accent)); color: var(--evolution-text, var(--text-normal)); background: var(--background-modifier-hover); }
+.evolution-task-add__icon { display: flex; align-items: center; }
+.evolution-task-add__icon svg { width: 14px; height: 14px; }
+.evolution-task-edit { display: flex; align-items: center; gap: 5px; width: 100%; }
+.evolution-task-edit__input { flex: 1; min-width: 0; }
+.evolution-task-edit__due { flex: none; width: 124px; padding: 2px 4px; font-size: calc(.78rem * var(--evolution-font-scale, 1)); }
+.evolution-task-edit__priority { flex: none; width: 74px; padding: 2px; font-size: calc(.78rem * var(--evolution-font-scale, 1)); }
+.evolution-list--tasks .evolution-task-edit { padding: 3px 6px; border-radius: 7px; background: var(--background-modifier-hover); }
+.evolution-task-add__confirm { display: flex; flex: none; align-items: center; padding: 4px; border: 0; border-radius: 6px; cursor: pointer; color: var(--ev-module-tasks, var(--interactive-accent)); background: transparent; }
+.evolution-task-add__confirm:hover { background: var(--background-modifier-hover); }
+.evolution-task-add__confirm svg { width: 16px; height: 16px; }
+.evolution-task-add__hint { margin: 6px 0 0; color: var(--evolution-muted); font-size: calc(.74rem * var(--evolution-font-scale, 1)); }
+
+.evolution-list { display: grid; gap: 7px; }
+/* 待办行距收紧：每行只留一点间隙，鼠标悬停时才有底色区分。 */
+.evolution-list--tasks { gap: 1px; }
+.evolution-task, .evolution-note { display: flex; align-items: flex-start; gap: 9px; padding: 9px; border-radius: 9px; }
+.evolution-list--tasks .evolution-task { align-items: center; gap: 7px; padding: 3px 6px; border-radius: 7px; }
+.evolution-task:hover, .evolution-note:hover { background: var(--background-modifier-hover); }
+.evolution-task input { flex: none; margin: 0; accent-color: var(--ev-module-tasks, var(--interactive-accent)); }
+.evolution-task__body, .evolution-note__body { min-width: 0; flex: 1; }
+.evolution-task__title, .evolution-note__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.evolution-task__badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 1px; }
+.evolution-task__badge { padding: 0 5px; border: 1px solid var(--evolution-border); border-radius: 999px; color: var(--evolution-muted); font-size: calc(.68rem * var(--evolution-font-scale, 1)); line-height: 1.6; white-space: nowrap; }
+.evolution-task__badge--priority { color: var(--ev-module-tasks, var(--interactive-accent)); border-color: var(--ev-module-tasks, var(--interactive-accent)); }
+.evolution-task__badge--due.is-today { color: var(--ev-module-tasks, var(--interactive-accent)); border-color: var(--ev-module-tasks, var(--interactive-accent)); }
+.evolution-task__badge--due.is-overdue { color: var(--text-error, #d9534f); border-color: var(--text-error, #d9534f); }
+.evolution-task__tools { display: flex; flex: none; align-items: center; gap: 1px; opacity: 0; }
+.evolution-task:hover .evolution-task__tools { opacity: 1; }
+.evolution-task__tools:focus-within { opacity: 1; }
+.evolution-note__meta { margin-top: 3px; font-size: calc(.78rem * var(--evolution-font-scale, 1)); color: var(--evolution-muted); }
+.evolution-empty { margin: 0; color: var(--evolution-muted); font-size: calc(.9rem * var(--evolution-font-scale, 1)); }
+.evolution-open { display: flex; align-items: center; padding: 3px; border: 0; border-radius: 6px; cursor: pointer; color: var(--evolution-muted); background: transparent; }
+.evolution-open:hover { color: var(--evolution-text, var(--text-normal)); background: var(--background-modifier-hover); }
+.evolution-open svg { width: 15px; height: 15px; }
+
+@media (max-width: 760px) {
+  .evolution-dashboard { height: auto; padding: 14px; }
+  .evolution-split { flex-direction: column; }
+  /* 窄屏两列是上下叠的，各自滚动反而别扭，交回给整页；半宽也一律还原成整行。 */
+  .evolution-column { flex: 0 0 auto; width: 100%; overflow: visible; }
+  .evolution-card-shell.is-half { flex: 0 0 100%; }
+  .evolution-resizer { display: none; }
+  .evolution-banner { min-height: 160px; }
+  .evolution-banner__content { padding: 20px; }
+}
