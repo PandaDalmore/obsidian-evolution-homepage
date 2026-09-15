@@ -11,7 +11,7 @@ import {
   setIcon
 } from "obsidian";
 
-const VIEW_TYPE_EVOLUTION = "evolution-dashboard-view";
+const VIEW_TYPE_EVOLUTION = "evolution-homepage-view";
 
 type SettingsFocus = "theme" | "banner" | "diary" | "tasks" | "projects" | "shortcuts" | null;
 
@@ -543,7 +543,7 @@ class EvolutionView extends ItemView {
   getIcon(): string { return "home"; }
 
   async onOpen(): Promise<void> {
-    this.contentEl.addClass("evolution-dashboard-view");
+    this.contentEl.addClass("evolution-homepage-view");
     await this.refresh();
   }
 
@@ -561,7 +561,7 @@ class EvolutionView extends ItemView {
     const root = this.contentEl;
     root.empty();
     this.plugin.applyTheme(root);
-    const dashboard = root.createDiv({ cls: "evolution-dashboard" });
+    const dashboard = root.createDiv({ cls: "evolution-homepage" });
     // 字号：整块主页的基准字号乘一个系数，卡片里没写死字号的地方都跟着变。
     dashboard.style.setProperty("--evolution-font-scale", String(FONT_SCALES[this.plugin.settings.fontScale]));
     this.renderBanner(dashboard);

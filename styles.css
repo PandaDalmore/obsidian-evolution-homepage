@@ -7,7 +7,7 @@
  * 描边和模块强调色上——染过的底在明暗切换时容易发浑。
  * ============================================================ */
 
-.evolution-dashboard-view,
+.evolution-homepage-view,
 .evolution-theme-preview {
   --evolution-text: var(--ev-text, var(--text-normal));
   --evolution-muted: var(--ev-muted, var(--text-muted));
@@ -24,16 +24,16 @@
   --evolution-module-projects: var(--ev-module-projects, var(--evolution-accent));
 }
 
-.evolution-dashboard-view {
+.evolution-homepage-view {
   background: var(--background-primary);
   color: var(--evolution-text);
   height: 100%;
   overflow: auto;
-  /* 字号缩放的兜底值，真正的倍数由插件按「字号」设置写到 .evolution-dashboard 上。 */
+  /* 字号缩放的兜底值，真正的倍数由插件按「字号」设置写到 .evolution-homepage 上。 */
   --evolution-font-scale: 1;
 }
 
-.evolution-dashboard {
+.evolution-homepage {
   box-sizing: border-box;
   max-width: 1600px;
   margin: 0 auto;
@@ -285,7 +285,7 @@
 .evolution-open svg { width: 15px; height: 15px; }
 
 @media (max-width: 760px) {
-  .evolution-dashboard { height: auto; padding: 14px; }
+  .evolution-homepage { height: auto; padding: 14px; }
   .evolution-split { flex-direction: column; }
   /* 窄屏两列是上下叠的，各自滚动反而别扭，交回给整页；半宽也一律还原成整行。 */
   .evolution-column { flex: 0 0 auto; width: 100%; overflow: visible; }

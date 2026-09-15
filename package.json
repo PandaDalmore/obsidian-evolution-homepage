@@ -1,10 +1,10 @@
 {
-  "name": "evolution-dashboard",
-  "version": "1.0.0",
-  "description": "A configurable personal dashboard for Obsidian.",
+  "name": "evolution-homepage",
+  "version": "1.0.1",
+  "description": "A configurable personal homepage for Obsidian.",
   "license": "MIT",
   "author": "PandaDal",
-  "keywords": ["obsidian", "obsidian-plugin", "dashboard", "homepage", "tasks", "calendar"],
+  "keywords": ["obsidian", "obsidian-plugin", "homepage", "dashboard", "tasks", "calendar"],
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"

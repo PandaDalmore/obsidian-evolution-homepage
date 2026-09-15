@@ -1,7 +1,7 @@
 {
-  "id": "evolution-dashboard",
+  "id": "evolution-homepage",
   "name": "Evolution homepage",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minAppVersion": "1.8.0",
   "description": "A configurable personal command center for notes, tasks, and daily reflection.",
   "author": "PandaDal",

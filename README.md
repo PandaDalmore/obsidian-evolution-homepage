@@ -113,7 +113,7 @@ Evolution 做的每件事都走 Obsidian 自己的 API，只有三处例外—�
 **方式一：手动安装（现在就能用）**
 
 1. 到本仓库的 [Releases](https://github.com/PandaDalmore/obsidian-evolution-homepage/releases) 页面，下载最新版里的 `main.js`、`manifest.json`、`styles.css` 三个文件。
-2. 在库目录下找到 `.obsidian/plugins/`，新建一个名为 `evolution-dashboard` 的文件夹，把三个文件放进去。文件夹名必须和 manifest 里的插件 id 一致，写成别的名字 Obsidian 认不出来。
+2. 在库目录下找到 `.obsidian/plugins/`，新建一个名为 `evolution-homepage` 的文件夹，把三个文件放进去。文件夹名必须和 manifest 里的插件 id 一致，写成别的名字 Obsidian 认不出来。
 3. 重启 Obsidian（或者到 设置 → 第三方插件，点一下已安装插件旁边的刷新按钮）。
 4. 设置 → 第三方插件 → 关掉「安全模式」，在「已安装插件」列表里找到 **Evolution homepage**，打开开关。
 
@@ -248,7 +248,7 @@ None of the three is on by default — the dashboard ships empty, and it stays i
 **Option 1: manual install (works today)**
 
 1. Go to the [Releases](https://github.com/PandaDalmore/obsidian-evolution-homepage/releases) page and download `main.js`, `manifest.json`, and `styles.css` from the latest release.
-2. Create a folder named `evolution-dashboard` under `.obsidian/plugins/` in your vault and drop the three files in. The folder name has to match the plugin id in `manifest.json` — anything else and Obsidian will not pick it up.
+2. Create a folder named `evolution-homepage` under `.obsidian/plugins/` in your vault and drop the three files in. The folder name has to match the plugin id in `manifest.json` — anything else and Obsidian will not pick it up.
 3. Restart Obsidian (or use the reload button next to Installed plugins in Settings → Community plugins).
 4. In Settings → Community plugins, turn off Restricted mode, then find **Evolution homepage** under Installed plugins and enable it.
 
