@@ -168,6 +168,7 @@
   background: linear-gradient(90deg, var(--evolution-module, transparent) 0 2px, transparent 2px 5px, var(--evolution-module, transparent) 5px 7px);
 }
 
+.evolution-settings__intro { margin: 0 0 18px; color: var(--evolution-muted, var(--text-muted)); font-size: .86rem; }
 .evolution-settings__back { display: inline-block; margin: 0 0 6px; padding: 6px 12px; border: 1px solid var(--evolution-border, var(--background-modifier-border)); border-radius: 8px; cursor: pointer; background: var(--evolution-soft, var(--background-secondary)); color: var(--text-normal); font-size: .9rem; }
 .evolution-settings__back:hover { border-color: var(--interactive-accent); background: var(--background-modifier-hover); }
 .evolution-settings__back-hint { color: var(--evolution-muted, var(--text-muted)); font-size: .82rem; margin: 0 0 14px; }

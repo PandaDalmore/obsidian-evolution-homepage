@@ -1316,8 +1316,8 @@ class EvolutionSettingTab extends PluginSettingTab {
       this.renderFocused(focus);
       return;
     }
-    new Setting(containerEl).setName("General（通用）").setHeading();
-    containerEl.createEl("p", { text: "Every path is vault-relative. Settings never include files from the dashboard author’s vault." });
+    // 顶层不放标题：插件名在设置侧栏已经显示，官方既不允许插件名也不允许 "General" 这类通用词。
+    containerEl.createEl("p", { cls: "evolution-settings__intro", text: "Every path is vault-relative. Settings never include files from the dashboard author’s vault." });
     this.themeSettings(containerEl);
     this.fontSettings(containerEl);
     this.layoutSettings(containerEl);

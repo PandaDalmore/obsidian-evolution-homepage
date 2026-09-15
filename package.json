@@ -1,6 +1,6 @@
 {
   "name": "evolution-homepage",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "A configurable personal homepage for Obsidian.",
   "license": "MIT",
   "author": "PandaDal",
@@ -15,6 +15,7 @@
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "check:version": "node scripts/check-version.mjs",
+    "bump": "node scripts/bump-version.mjs",
     "build": "npm run check:version && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
   },
   "devDependencies": {
