@@ -28,6 +28,8 @@
   background: var(--background-primary);
   color: var(--evolution-text);
   height: 100%;
+  /* 有的主题会给 .view-content 加 padding，横幅上面就会多出一条空白；这里显式清掉。 */
+  padding-top: 0;
   overflow: auto;
   /* 字号缩放的兜底值，真正的倍数由插件按「字号」设置写到 .evolution-homepage 上。 */
   --evolution-font-scale: 1;
@@ -37,7 +39,8 @@
   box-sizing: border-box;
   max-width: 1600px;
   margin: 0 auto;
-  padding: 24px;
+  /* 顶部收窄：横幅尽量贴着视图上沿，两侧和底部保持呼吸感。 */
+  padding: 10px 24px 24px;
   /* 撑满整个视图高度，这样下面两列才能各自滚动，而不是整页一起滚。 */
   height: 100%;
   /* 万一父级没给确定高度，也不至于塌成 0。 */
@@ -286,7 +289,7 @@
 .evolution-open svg { width: 15px; height: 15px; }
 
 @media (max-width: 760px) {
-  .evolution-homepage { height: auto; padding: 14px; }
+  .evolution-homepage { height: auto; padding: 8px 14px 14px; }
   .evolution-split { flex-direction: column; }
   /* 窄屏两列是上下叠的，各自滚动反而别扭，交回给整页；半宽也一律还原成整行。 */
   .evolution-column { flex: 0 0 auto; width: 100%; overflow: visible; }
