@@ -10,6 +10,7 @@ import {
   normalizePath,
   setIcon
 } from "obsidian";
+import { LANG_IDS, LANG_LABEL, monthLabel, setLang, t, weekdays, type Lang } from "./i18n";
 
 const VIEW_TYPE_EVOLUTION = "evolution-homepage-view";
 
@@ -61,7 +62,7 @@ interface CustomTheme {
 type BannerAlign = "left" | "center" | "right";
 
 const BANNER_ALIGNS: BannerAlign[] = ["left", "center", "right"];
-const ALIGN_LABEL: Record<BannerAlign, string> = { left: "靠左", center: "居中", right: "靠右" };
+const ALIGN_LABEL: Record<BannerAlign, string> = { left: "Left", center: "Center", right: "Right" };
 
 interface BannerSettings {
   image: string;
@@ -111,7 +112,7 @@ interface TaskSettings {
 
 /** 完成日期的写法。主页自己认 ✅，所以不装 Tasks 也照样有意义。 */
 type DoneDateMode = "always" | "with-tasks" | "never";
-const DONE_DATE_LABEL: Record<DoneDateMode, string> = { always: "总是写", "with-tasks": "装了 Tasks 才写", never: "不写" };
+const DONE_DATE_LABEL: Record<DoneDateMode, string> = { always: "Always write", "with-tasks": "Only if Tasks is installed", never: "Never" };
 const DONE_DATE_MODES = Object.keys(DONE_DATE_LABEL) as DoneDateMode[];
 
 interface ProjectSettings {
@@ -135,16 +136,16 @@ interface LayoutEntry {
 }
 
 const MODULE_LABEL: Record<ModuleKey, string> = {
-  diary: "Diary（日记）",
-  shortcuts: "Shortcuts（快捷入口）",
-  tasks: "Open tasks（待办任务）",
-  projects: "Active notes（活跃笔记）"
+  diary: "Diary",
+  shortcuts: "Shortcuts",
+  tasks: "Open tasks",
+  projects: "Active notes"
 };
 
 /** 一个模块在列里占多宽：整行，还是半行（同一列两条半宽自动并排）。 */
 type ModuleSpan = "full" | "half";
 
-const SPAN_LABEL: Record<ModuleSpan, string> = { full: "整行", half: "半宽" };
+const SPAN_LABEL: Record<ModuleSpan, string> = { full: "Full row", half: "Half width" };
 
 const DEFAULT_LAYOUT: LayoutEntry[] = [
   { key: "diary", column: "left", height: 0, span: "full" },
@@ -231,10 +232,12 @@ interface TaskItem {
 
 const PRIORITY_ORDER: TaskPriority[] = ["highest", "high", "medium", "low"];
 const PRIORITY_EMOJI: Record<TaskPriority, string> = { highest: "🔺", high: "⏫", medium: "🔼", low: "🔽" };
-const PRIORITY_LABEL: Record<TaskPriority, string> = { highest: "最高", high: "高", medium: "中", low: "低" };
+const PRIORITY_LABEL: Record<TaskPriority, string> = { highest: "Highest", high: "High", medium: "Medium", low: "Low" };
 const EMPTY_DRAFT: TaskDraft = { text: "", due: "", priority: "" };
 
 interface EvolutionSettings {
+  /** 界面语言：中文或英文，整体切换。 */
+  language: Lang;
   theme: ThemeId;
   customTheme: CustomTheme;
   /** 主页整体字号的档位，具体倍数看 FONT_SCALES。 */
@@ -255,12 +258,13 @@ interface EvolutionSettings {
 /** 字号档位。默认给"小"，主页信息密度高，Obsidian 默认字号看着偏大。 */
 type FontScaleId = "small" | "normal" | "large";
 const FONT_SCALES: Record<FontScaleId, number> = { small: 0.9, normal: 1, large: 1.1 };
-const FONT_SCALE_LABEL: Record<FontScaleId, string> = { small: "小", normal: "标准", large: "大" };
+const FONT_SCALE_LABEL: Record<FontScaleId, string> = { small: "Small", normal: "Normal", large: "Large" };
 const FONT_SCALE_IDS = Object.keys(FONT_SCALES) as FontScaleId[];
 
 const MODULE_KEYS: ModuleKey[] = ["diary", "shortcuts", "tasks", "projects"];
 
 const DEFAULT_SETTINGS: EvolutionSettings = {
+  language: "zh",
   theme: "auto",
   fontScale: "small",
   customTheme: {
@@ -295,14 +299,16 @@ export default class EvolutionPlugin extends Plugin {
   settings: EvolutionSettings = DEFAULT_SETTINGS;
   pendingFocus: SettingsFocus = null;
   private settingTab: EvolutionSettingTab | null = null;
+  /** 侧栏图标：换语言后要改写它的提示文字，留个引用。 */
+  private ribbonIcon: HTMLElement | null = null;
   /** 节流用的定时器：连续触发的刷新只跑最后一次。 */
   private refreshTimer: number | null = null;
 
   async onload(): Promise<void> {
     await this.loadSettings();
     this.registerView(VIEW_TYPE_EVOLUTION, (leaf) => new EvolutionView(leaf, this));
-    this.addRibbonIcon("home", "打开主页", () => void this.openDashboard());
-    this.addCommand({ id: "open-dashboard", name: "打开主页", callback: () => void this.openDashboard() });
+    this.ribbonIcon = this.addRibbonIcon("home", t("Open homepage"), () => void this.openDashboard());
+    this.addCommand({ id: "open-dashboard", name: t("Open homepage"), callback: () => void this.openDashboard() });
     this.settingTab = new EvolutionSettingTab(this.app, this);
     this.addSettingTab(this.settingTab);
     this.registerEvent(this.app.vault.on("modify", () => this.scheduleRefresh()));
@@ -353,9 +359,12 @@ export default class EvolutionPlugin extends Plugin {
         ...saved?.projects,
         limit: clampNumber(String(saved?.projects?.limit ?? DEFAULT_SETTINGS.projects.limit), 1, 50, DEFAULT_SETTINGS.projects.limit)
       },
+      language: saved?.language === "zh" || saved?.language === "en" ? saved.language : DEFAULT_SETTINGS.language,
       layout: this.migrateLayout(saved?.layout),
       shortcuts: (saved?.shortcuts ?? []).map(normalizeShortcut).filter((item): item is Shortcut => item !== null)
     };
+    setLang(this.settings.language);
+    this.syncChromeLabel();
   }
 
   /** 勾选完成时写不写 ✅ 完成日期。主页自己也认这个符号，所以不装 Tasks 一样有意义。 */
@@ -433,7 +442,16 @@ export default class EvolutionPlugin extends Plugin {
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
+    setLang(this.settings.language);
+    this.syncChromeLabel();
     this.scheduleRefresh();
+  }
+
+  /** 换语言后，侧栏图标的提示不会自己重读 t()，手动补一次。命令名要等重启才跟着换。 */
+  private syncChromeLabel(): void {
+    const label = t("Open homepage");
+    this.ribbonIcon?.setAttribute("aria-label", label);
+    this.ribbonIcon?.setAttribute("title", label);
   }
 
   async addShortcut(): Promise<void> {
@@ -547,7 +565,7 @@ class EvolutionView extends ItemView {
   }
 
   getViewType(): string { return VIEW_TYPE_EVOLUTION; }
-  getDisplayText(): string { return "主页"; }
+  getDisplayText(): string { return t("Homepage"); }
   getIcon(): string { return "home"; }
 
   async onOpen(): Promise<void> {
@@ -620,7 +638,7 @@ class EvolutionView extends ItemView {
 
   /** 两列中间那条竖分隔条：左右拖改变左右列宽比，松手才写进设置。 */
   private makeColumnResizer(split: HTMLElement, left: HTMLElement, right: HTMLElement): void {
-    const resizer = split.createDiv({ cls: "evolution-resizer", attr: { title: "左右拖动调整列宽", "aria-label": "调整列宽" } });
+    const resizer = split.createDiv({ cls: "evolution-resizer", attr: { title: t("Drag left or right to change column width"), "aria-label": t("Resize columns") } });
     // 分隔条要夹在两列中间，直接 append 会跑到右列后面。
     left.insertAdjacentElement("afterend", resizer);
     resizer.addEventListener("pointerdown", (event) => {
@@ -666,14 +684,14 @@ class EvolutionView extends ItemView {
     if (image) banner.style.backgroundImage = `url("${image.replace(/"/g, "\\\"")}")`;
     banner.createDiv({ cls: "evolution-banner__shade" });
     const tools = banner.createDiv({ cls: "evolution-banner__tools" });
-    const theme = tools.createEl("button", { cls: "evolution-banner__edit", attr: { "aria-label": "Theme（主题）", title: "Theme（主题）" } });
+    const theme = tools.createEl("button", { cls: "evolution-banner__edit", attr: { "aria-label": t("Theme"), title: t("Theme") } });
     setIcon(theme, "palette");
     theme.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       this.plugin.openSettings("theme");
     });
-    const edit = tools.createEl("button", { cls: "evolution-banner__edit", attr: { "aria-label": "Edit banner（编辑横幅）", title: "Edit banner（编辑横幅）" } });
+    const edit = tools.createEl("button", { cls: "evolution-banner__edit", attr: { "aria-label": t("Edit banner"), title: t("Edit banner") } });
     setIcon(edit, "pencil");
     edit.addEventListener("click", (event) => {
       event.preventDefault();
@@ -712,7 +730,7 @@ class EvolutionView extends ItemView {
     const card = shell.createDiv({ cls: isModule ? ["evolution-card", `evolution-card--${focus}`] : "evolution-card" });
     const header = card.createDiv({ cls: title ? "evolution-card__header" : ["evolution-card__header", "evolution-card__header--bare"] });
     if (title) header.createDiv({ cls: "evolution-card__title", text: title });
-    const settings = header.createEl("button", { cls: "evolution-icon-button", attr: { "aria-label": `Configure ${title ?? focus ?? "module"}` } });
+    const settings = header.createEl("button", { cls: "evolution-icon-button", attr: { "aria-label": `${t("Configure")} ${title ?? focus ?? t("module")}` } });
     setIcon(settings, "settings-2");
     settings.addEventListener("click", () => this.plugin.openSettings(focus));
     if (isModule) this.attachCardShell(shell, focus as ModuleKey);
@@ -737,7 +755,7 @@ class EvolutionView extends ItemView {
 
   /** 底边那条小横杠：上下拖改高度，双击恢复跟着内容走。 */
   private attachResizeHandle(shell: HTMLElement, key: ModuleKey): void {
-    const handle = shell.createDiv({ cls: "evolution-card-resize", attr: { title: "拖动调整高度，双击恢复自动高度", "aria-label": "调整卡片高度" } });
+    const handle = shell.createDiv({ cls: "evolution-card-resize", attr: { title: t("Drag to change height; double-click to restore auto height"), "aria-label": t("Resize card height") } });
     handle.addEventListener("dblclick", () => void this.plugin.setLayoutHeight(key, 0));
     handle.addEventListener("pointerdown", (event) => {
       event.preventDefault();
@@ -849,19 +867,18 @@ class EvolutionView extends ItemView {
     const today = new Date();
     const month = this.diaryMonth;
     if (!this.diaryFolder(month)) {
-      card.createEl("p", { cls: "evolution-empty", text: "在设置里填一个日记目录，或启用 Obsidian 核心的「日记」插件，本卡片会自动沿用它的配置。" });
+      card.createEl("p", { cls: "evolution-empty", text: t("Pick a diary folder in settings, or enable Obsidian's core Daily notes plugin — this card reuses that configuration.") });
       return;
     }
-    const monthNames = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
     const monthBar = card.createDiv({ cls: "evolution-calendar__month" });
-    const prev = monthBar.createEl("button", { cls: ["evolution-icon-button", "evolution-calendar__month-btn"], attr: { "aria-label": "上个月", title: "上个月" } });
+    const prev = monthBar.createEl("button", { cls: ["evolution-icon-button", "evolution-calendar__month-btn"], attr: { "aria-label": t("Previous month"), title: t("Previous month") } });
     setIcon(prev, "chevron-left");
     prev.addEventListener("click", () => {
       this.diaryMonth = new Date(month.getFullYear(), month.getMonth() - 1, 1);
       void this.refresh();
     });
-    monthBar.createSpan({ cls: "evolution-calendar__month-label", text: `📅 ${month.getFullYear()}年 ${monthNames[month.getMonth()]}`, attr: { title: this.diaryPath(month) } });
-    const next = monthBar.createEl("button", { cls: ["evolution-icon-button", "evolution-calendar__month-btn"], attr: { "aria-label": "下个月", title: "下个月" } });
+    monthBar.createSpan({ cls: "evolution-calendar__month-label", text: monthLabel(month.getFullYear(), month.getMonth()), attr: { title: this.diaryPath(month) } });
+    const next = monthBar.createEl("button", { cls: ["evolution-icon-button", "evolution-calendar__month-btn"], attr: { "aria-label": t("Next month"), title: t("Next month") } });
     setIcon(next, "chevron-right");
     next.addEventListener("click", () => {
       this.diaryMonth = new Date(month.getFullYear(), month.getMonth() + 1, 1);
@@ -869,7 +886,7 @@ class EvolutionView extends ItemView {
     });
     const table = card.createEl("table", { cls: "evolution-calendar" });
     const heading = table.createEl("thead").createEl("tr");
-    for (const day of ["日", "一", "二", "三", "四", "五", "六"]) heading.createEl("th", { text: day });
+    for (const day of weekdays()) heading.createEl("th", { text: day });
     const body = table.createEl("tbody");
     const first = new Date(month.getFullYear(), month.getMonth(), 1).getDay();
     const total = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
@@ -893,8 +910,8 @@ class EvolutionView extends ItemView {
           button.style.borderColor = chip.edge;
           button.style.color = chip.text;
           button.addClass("evolution-calendar__day--status");
-          button.setAttribute("aria-label", `当日状态：${status.trim()}`);
-          button.setAttribute("title", `当日状态：${status.trim()}`);
+          button.setAttribute("aria-label", t("Daily status: {status}", { status: status.trim() }));
+          button.setAttribute("title", t("Daily status: {status}", { status: status.trim() }));
         }
       }
       button.addEventListener("click", () => void this.openOrCreateDiary(path, date));
@@ -943,7 +960,7 @@ class EvolutionView extends ItemView {
       const file = await this.ensureDiaryFile(date);
       await this.app.workspace.getLeaf("tab").openFile(file);
     } catch (error) {
-      new Notice(`Could not create daily note: ${error instanceof Error ? error.message : String(error)}`);
+      new Notice(t("Could not create daily note: {message}", { message: error instanceof Error ? error.message : String(error) }));
     }
   }
 
@@ -963,14 +980,14 @@ class EvolutionView extends ItemView {
   }
 
   private renderShortcuts(root: HTMLElement): void {
-    const card = this.makeCard(root, "Shortcuts（快捷入口）", "shortcuts");
+    const card = this.makeCard(root, t(MODULE_LABEL.shortcuts), "shortcuts");
     // 设置里刚加进来、还没填链接的空行不在主页占位置。
     // 但拖动排序要写回原数组，所以每条都带上它在 settings.shortcuts 里的真实下标。
     const entries = this.plugin.settings.shortcuts
       .map((shortcut, index) => ({ shortcut, index }))
       .filter((entry) => entry.shortcut.target.trim());
     if (!entries.length) {
-      card.createEl("p", { cls: "evolution-empty", text: "在设置里添加快捷入口，想加几条就加几条。" });
+      card.createEl("p", { cls: "evolution-empty", text: t("Add shortcuts in settings — as many as you like.") });
       return;
     }
     const list = card.createDiv({ cls: "evolution-shortcuts" });
@@ -981,7 +998,7 @@ class EvolutionView extends ItemView {
       const index = entry.index;
       const item = list.createDiv({
         cls: "evolution-shortcut",
-        attr: { role: "button", tabindex: "0", title: `${shortcut.label || shortcut.target}\n${shortcut.target}\n拖动可调整顺序` }
+        attr: { role: "button", tabindex: "0", title: `${shortcut.label || shortcut.target}\n${shortcut.target}\n${t("Drag to reorder")}` }
       });
       item.draggable = true;
       const grip = item.createDiv({ cls: "evolution-shortcut__grip", attr: { "aria-hidden": "true" } });
@@ -1035,7 +1052,7 @@ class EvolutionView extends ItemView {
   }
 
   private async renderTasks(root: HTMLElement): Promise<void> {
-    const card = this.makeCard(root, "Open tasks（待办任务）", "tasks");
+    const card = this.makeCard(root, t(MODULE_LABEL.tasks), "tasks");
     this.renderTaskComposer(card);
     const files = this.filesFor(this.plugin.settings.tasks.folders, this.plugin.settings.tasks.files);
     // 新任务会落到当日日记时，列表也要把当日日记扫一遍，否则刚加的任务看不见。
@@ -1044,11 +1061,11 @@ class EvolutionView extends ItemView {
       const diary = this.app.vault.getAbstractFileByPath(diaryPath);
       if (diary instanceof TFile) files.push(diary);
     }
-    if (!files.length) { card.createEl("p", { cls: "evolution-empty", text: "还没有配置任务来源，上面添加的任务会写进当日日记。" }); return; }
+    if (!files.length) { card.createEl("p", { cls: "evolution-empty", text: t("No task source configured yet; tasks you add above go into today's daily note.") }); return; }
     // 来源目录常常上千篇，先把没有待办项的笔记筛掉再读全文。
     const sources = files.filter((file) => this.mayHaveOpenTasks(file));
     const tasks = (await Promise.all(sources.map((file) => this.tasksInFile(file)))).flat();
-    if (!tasks.length) { card.createEl("p", { cls: "evolution-empty", text: "暂无未完成任务。" }); return; }
+    if (!tasks.length) { card.createEl("p", { cls: "evolution-empty", text: t("No open tasks.") }); return; }
     // 到期日是有意义的：有日期的排前面、日子近的在前；没有日期的保持来源笔记的顺序跟在后面。
     const withDue = tasks.filter((task) => task.due).sort((a, b) => a.due.localeCompare(b.due));
     const ordered = [...withDue, ...tasks.filter((task) => !task.due)];
@@ -1067,14 +1084,14 @@ class EvolutionView extends ItemView {
       this.renderTaskBadges(body, task);
 
       const tools = item.createDiv({ cls: "evolution-task__tools" });
-      const edit = tools.createEl("button", { cls: "evolution-open", attr: { "aria-label": "Edit task（修改任务）", title: "修改任务" } });
+      const edit = tools.createEl("button", { cls: "evolution-open", attr: { "aria-label": t("Edit task"), title: t("Edit task") } });
       setIcon(edit, "pencil");
       edit.addEventListener("click", () => {
         this.editing = { path: task.file.path, line: task.line };
         this.draft = { text: task.text, due: task.due, priority: task.priority };
         void this.refresh();
       });
-      const open = tools.createEl("button", { cls: "evolution-open", attr: { "aria-label": "Open task note" } });
+      const open = tools.createEl("button", { cls: "evolution-open", attr: { "aria-label": t("Open task note") } });
       setIcon(open, "external-link");
       open.addEventListener("click", () => void this.app.workspace.getLeaf("tab").openFile(task.file));
     }
@@ -1085,7 +1102,7 @@ class EvolutionView extends ItemView {
     if (!task.due && !task.priority && !task.done && !task.repeat && !task.scheduled && !task.start) return;
     const row = body.createDiv({ cls: "evolution-task__badges" });
     if (task.priority) {
-      row.createSpan({ cls: "evolution-task__badge evolution-task__badge--priority", text: PRIORITY_LABEL[task.priority] });
+      row.createSpan({ cls: "evolution-task__badge evolution-task__badge--priority", text: t(PRIORITY_LABEL[task.priority]) });
     }
     if (task.due) {
       const today = todayIso();
@@ -1093,12 +1110,12 @@ class EvolutionView extends ItemView {
       const cls = ["evolution-task__badge", "evolution-task__badge--due"];
       if (overdue) cls.push("is-overdue");
       else if (task.due === today) cls.push("is-today");
-      row.createSpan({ cls: cls.join(" "), text: overdue ? `${task.due} 已过期` : task.due });
+      row.createSpan({ cls: cls.join(" "), text: overdue ? t("Overdue {due}", { due: task.due }) : task.due });
     }
-    if (task.start) row.createSpan({ cls: "evolution-task__badge", text: `开始 ${task.start}` });
-    if (task.scheduled) row.createSpan({ cls: "evolution-task__badge", text: `计划 ${task.scheduled}` });
+    if (task.start) row.createSpan({ cls: "evolution-task__badge", text: t("Start {date}", { date: task.start }) });
+    if (task.scheduled) row.createSpan({ cls: "evolution-task__badge", text: t("Scheduled {date}", { date: task.scheduled }) });
     if (task.repeat) row.createSpan({ cls: "evolution-task__badge", text: `🔁 ${task.repeat.trim()}` });
-    if (task.done) row.createSpan({ cls: "evolution-task__badge", text: `上次完成 ${task.done}` });
+    if (task.done) row.createSpan({ cls: "evolution-task__badge", text: t("Last done {date}", { date: task.done }) });
   }
 
   /**
@@ -1130,7 +1147,7 @@ class EvolutionView extends ItemView {
       const trigger = bar.createEl("button", { cls: "evolution-task-add__trigger", attr: { title: hint } });
       const icon = trigger.createSpan({ cls: "evolution-task-add__icon", attr: { "aria-hidden": "true" } });
       setIcon(icon, "plus");
-      trigger.createSpan({ text: "添加任务" });
+      trigger.createSpan({ text: t("Add task") });
       trigger.addEventListener("click", () => {
         this.taskComposerOpen = true;
         void this.refresh();
@@ -1154,13 +1171,13 @@ class EvolutionView extends ItemView {
   /** 新增和编辑共用的一行输入：正文 + 截止日期 + 优先级，后两项可选。 */
   private renderTaskFields(container: HTMLElement, draft: TaskDraft, onSave: (draft: TaskDraft) => void, onCancel: () => void): void {
     const form = container.createDiv({ cls: "evolution-task-edit" });
-    const input = form.createEl("input", { type: "text", cls: "evolution-task-edit__input", placeholder: "写一条任务，回车保存", attr: { "aria-label": "任务内容" } });
+    const input = form.createEl("input", { type: "text", cls: "evolution-task-edit__input", placeholder: t("Write a task, press Enter to save"), attr: { "aria-label": t("Task text") } });
     input.value = draft.text;
-    const due = form.createEl("input", { type: "date", cls: "evolution-task-edit__due", attr: { "aria-label": "截止时间（可选）", title: "截止时间（可选）" } });
+    const due = form.createEl("input", { type: "date", cls: "evolution-task-edit__due", attr: { "aria-label": t("Due date (optional)"), title: t("Due date (optional)") } });
     due.value = draft.due;
-    const priority = form.createEl("select", { cls: "evolution-task-edit__priority", attr: { "aria-label": "优先级（可选）", title: "优先级（可选）" } });
-    priority.createEl("option", { value: "", text: "优先级" });
-    PRIORITY_ORDER.forEach((key) => priority.createEl("option", { value: key, text: PRIORITY_LABEL[key] }));
+    const priority = form.createEl("select", { cls: "evolution-task-edit__priority", attr: { "aria-label": t("Priority (optional)"), title: t("Priority (optional)") } });
+    priority.createEl("option", { value: "", text: t("Priority") });
+    PRIORITY_ORDER.forEach((key) => priority.createEl("option", { value: key, text: t(PRIORITY_LABEL[key]) }));
     priority.value = draft.priority;
 
     const save = (): void => {
@@ -1168,9 +1185,9 @@ class EvolutionView extends ItemView {
       if (!text) { onCancel(); return; }
       onSave({ text, due: due.value, priority: (priority.value || "") as TaskPriority | "" });
     };
-    const confirm = form.createEl("button", { cls: "evolution-task-add__confirm", attr: { "aria-label": "保存任务", title: "保存（Enter）" } });
+    const confirm = form.createEl("button", { cls: "evolution-task-add__confirm", attr: { "aria-label": t("Save task"), title: t("Save (Enter)") } });
     setIcon(confirm, "check");
-    const cancel = form.createEl("button", { cls: "evolution-icon-button", attr: { "aria-label": "取消", title: "取消（Esc）" } });
+    const cancel = form.createEl("button", { cls: "evolution-icon-button", attr: { "aria-label": t("Cancel"), title: t("Cancel (Esc)") } });
     setIcon(cancel, "x");
 
     confirm.addEventListener("click", save);
@@ -1213,20 +1230,20 @@ class EvolutionView extends ItemView {
 
   private taskTargetHint(): string {
     const configured = this.configuredTaskFile();
-    if (configured) return `新任务保存路径：${configured}`;
-    return `新任务保存路径：${this.diaryPath(new Date())}`;
+    if (configured) return t("New tasks are saved to: {path}", { path: configured });
+    return t("New tasks are saved to: {path}", { path: this.diaryPath(new Date()) });
   }
 
   private async addTask(draft: TaskDraft): Promise<void> {
     try {
       const target = await this.resolveTaskFile();
       await this.appendLine(target, buildTaskLine(draft));
-      new Notice(`已添加到 ${target.path}`);
+      new Notice(t("Added to {path}", { path: target.path }));
     } catch (error) {
       // 写失败就把内容放回输入框，别让用户白打一遍。
       this.taskComposerOpen = true;
       this.draft = draft;
-      new Notice(`添加失败：${error instanceof Error ? error.message : String(error)}`);
+      new Notice(t("Could not add: {message}", { message: error instanceof Error ? error.message : String(error) }));
       void this.refresh();
     }
   }
@@ -1243,17 +1260,17 @@ class EvolutionView extends ItemView {
       await this.app.vault.process(file, (content) => {
         const lines = content.split(/\r?\n/);
         const target = locateTaskLine(lines, line, original);
-        if (target < 0) throw new Error("笔记里找不到这条任务，可能被别处改动过");
+        if (target < 0) throw new Error(t("Task not found in the note; it may have changed elsewhere"));
         // 行尾 Tasks 自己的元数据（重复、id 等）主页不碰，原样带回去。
         lines[target] = buildTaskLine(draft, keepTaskMeta(original));
         return lines.join(detectNewline(content));
       });
-      new Notice(`已更新 ${file.path}`);
+      new Notice(t("Updated {path}", { path: file.path }));
     } catch (error) {
       // 内容别丢：搬回顶部的添加框，用户可以直接再存一次。
       this.taskComposerOpen = true;
       this.draft = draft;
-      new Notice(`修改失败：${error instanceof Error ? error.message : String(error)}`);
+      new Notice(t("Could not update: {message}", { message: error instanceof Error ? error.message : String(error) }));
       void this.refresh();
     }
   }
@@ -1286,16 +1303,16 @@ class EvolutionView extends ItemView {
         return lines.join(detectNewline(content));
       });
     } catch (error) {
-      new Notice(`勾选失败：${error instanceof Error ? error.message : String(error)}`);
+      new Notice(t("Could not complete: {message}", { message: error instanceof Error ? error.message : String(error) }));
     }
   }
 
   private renderProjects(root: HTMLElement): void {
-    const card = this.makeCard(root, "Active notes（活跃笔记）", "projects");
+    const card = this.makeCard(root, t(MODULE_LABEL.projects), "projects");
     const config = this.plugin.settings.projects;
     const source = config.folders.length ? this.filesFor(config.folders, []) : this.app.vault.getMarkdownFiles();
     const files = source.filter((file) => matchesTags(this.app, file, config.tags));
-    if (!files.length) { card.createEl("p", { cls: "evolution-empty", text: "Choose active-note tags or folders in Evolution settings." }); return; }
+    if (!files.length) { card.createEl("p", { cls: "evolution-empty", text: t("Choose active-note tags or folders in Evolution settings.") }); return; }
     const list = card.createDiv({ cls: "evolution-list" });
     files.sort((a, b) => b.stat.mtime - a.stat.mtime).slice(0, config.limit).forEach((file) => {
       const item = list.createDiv({ cls: "evolution-note" });
@@ -1325,11 +1342,23 @@ class EvolutionSettingTab extends PluginSettingTab {
       this.renderFocused(focus);
       return;
     }
-    // 顶层不放标题：插件名在设置侧栏已经显示，官方既不允许插件名也不允许 "General" 这类通用词。
-    containerEl.createEl("p", { cls: "evolution-settings__intro", text: "Every path is vault-relative. Settings never include files from the dashboard author’s vault." });
     new Setting(containerEl)
-      .setName("启动时自动打开主页")
-      .setDesc("开启后，每次打开这个库会自动打开 Evolution 主页；若主页视图已经在布局里（例如恢复上次工作区），则不会重复打开。")
+      .setName(t("Language"))
+      .setDesc(t("Switch the whole homepage between Chinese and English."))
+      .addDropdown((dd) => {
+        for (const id of LANG_IDS) dd.addOption(id, t(LANG_LABEL[id]));
+        dd.setValue(this.plugin.settings.language);
+        dd.onChange(async (value) => {
+          this.plugin.settings.language = value as Lang;
+          await this.plugin.saveSettings();
+          this.display();
+        });
+      });
+    // 顶层不放标题：插件名在设置侧栏已经显示，官方既不允许插件名也不允许 "General" 这类通用词。
+    containerEl.createEl("p", { cls: "evolution-settings__intro", text: t("Every path is vault-relative. Settings never include files from the dashboard author’s vault.") });
+    new Setting(containerEl)
+      .setName(t("Open homepage on startup"))
+      .setDesc(t("Turn on to open the Evolution homepage automatically whenever this vault loads. If the homepage view is already part of your layout (restored workspace, for example), it will not open a second one."))
       .addToggle((toggle) =>
         toggle
           .setValue(this.plugin.settings.openOnStartup)
@@ -1349,9 +1378,9 @@ class EvolutionSettingTab extends PluginSettingTab {
   }
 
   private renderFocused(focus: SettingsFocus): void {
-    const back = this.containerEl.createEl("button", { cls: "evolution-settings__back", text: "← 返回全部设置" });
+    const back = this.containerEl.createEl("button", { cls: "evolution-settings__back", text: t("← Back to all settings") });
     back.addEventListener("click", () => this.display());
-    this.containerEl.createEl("p", { cls: "evolution-settings__back-hint", text: "只显示当前模块的配置。点「返回全部设置」可查看所有模块。" });
+    this.containerEl.createEl("p", { cls: "evolution-settings__back-hint", text: t("Showing only this module's settings. Click “Back to all settings” to see everything.") });
     if (focus === "theme") this.themeSettings(this.containerEl);
     else if (focus === "banner") this.bannerSettings(this.containerEl);
     else if (focus === "diary") this.diarySettings(this.containerEl);
@@ -1361,8 +1390,8 @@ class EvolutionSettingTab extends PluginSettingTab {
   }
 
   private themeSettings(root: HTMLElement): void {
-    new Setting(root).setName("Theme（主题）").setHeading();
-    root.createEl("p", { text: "配色取自 obsidian-color-boost 的四套预设。主题只改主页自己的文字、描边和模块强调色，底色保持中性不染色；库里其它笔记界面一概不动。" });
+    new Setting(root).setName(t("Theme")).setHeading();
+    root.createEl("p", { text: t("The four palettes come from obsidian-color-boost. A theme only touches the homepage's own text, borders, and per-module accent; card backgrounds stay neutral, and the rest of your vault is untouched.") });
 
     // 色卡 + 一张迷你卡片，选之前就能看到实际效果。用的是主页同一套 class，预览即所得。
     const preview = root.createDiv({ cls: "evolution-theme-preview" });
@@ -1371,25 +1400,25 @@ class EvolutionSettingTab extends PluginSettingTab {
       const style = this.plugin.themeStyle();
       applyThemeVars(preview, style);
       if (!style) {
-        preview.createDiv({ cls: "evolution-theme-preview__hint", text: "跟随 Obsidian 主题：主页沿用你当前 Obsidian 主题自身的颜色，不做任何覆盖。" });
+        preview.createDiv({ cls: "evolution-theme-preview__hint", text: t("Following your Obsidian theme: the homepage inherits the colors of your current theme and overrides nothing.") });
         return;
       }
       const strip = preview.createDiv({ cls: "evolution-theme-preview__strip" });
-      themeSwatch(strip, "正文", style.text);
-      themeSwatch(strip, "标题", style.heading);
-      themeSwatch(strip, "强调", style.accent);
-      themeSwatch(strip, "边框", style.border);
-      themeSwatch(strip, "日记", style.modules.diary);
-      themeSwatch(strip, "快捷入口", style.modules.shortcuts);
-      themeSwatch(strip, "待办", style.modules.tasks);
-      themeSwatch(strip, "活跃笔记", style.modules.projects);
+      themeSwatch(strip, t("Body text"), style.text);
+      themeSwatch(strip, t("Heading"), style.heading);
+      themeSwatch(strip, t("Accent"), style.accent);
+      themeSwatch(strip, t("Border"), style.border);
+      themeSwatch(strip, t(MODULE_LABEL.diary), style.modules.diary);
+      themeSwatch(strip, t(MODULE_LABEL.shortcuts), style.modules.shortcuts);
+      themeSwatch(strip, t(MODULE_LABEL.tasks), style.modules.tasks);
+      themeSwatch(strip, t(MODULE_LABEL.projects), style.modules.projects);
 
       const demo = preview.createDiv({ cls: ["evolution-card", "evolution-card--diary"] });
       const header = demo.createDiv({ cls: "evolution-card__header" });
-      header.createDiv({ cls: "evolution-card__title", text: "Diary（日记）" });
+      header.createDiv({ cls: "evolution-card__title", text: t(MODULE_LABEL.diary) });
       const body = demo.createDiv({ cls: "evolution-theme-preview__body" });
-      body.createDiv({ text: "这是今天的日记示例文字。" });
-      body.createDiv({ cls: "evolution-theme-preview__meta", text: "记录 / 2026.09.14" });
+      body.createDiv({ text: t("Sample diary text for today.") });
+      body.createDiv({ cls: "evolution-theme-preview__meta", text: t("Note / 2026.09.14") });
     };
 
     const note = root.createDiv({ cls: "evolution-settings__note" });
@@ -1409,22 +1438,22 @@ class EvolutionSettingTab extends PluginSettingTab {
           renderPreview();
         });
       };
-      pick("正文文字", "清单项与日历数字的颜色。", config.text, (v) => { config.text = v; });
-      pick("卡片标题", "各卡片标题的兜底颜色，模块色没设时用它。", config.heading, (v) => { config.heading = v; });
-      pick("强调色", "悬浮边框、今天高亮、图标兜底色。", config.accent, (v) => { config.accent = v; });
-      pick("日记模块", "日历的月份标题与今天高亮。", config.modules.diary, (v) => { config.modules.diary = v; });
-      pick("快捷入口模块", "入口左侧的图标颜色。", config.modules.shortcuts, (v) => { config.modules.shortcuts = v; });
-      pick("待办模块", "任务复选框的颜色。", config.modules.tasks, (v) => { config.modules.tasks = v; });
-      pick("活跃笔记模块", "活跃笔记卡片的标题颜色。", config.modules.projects, (v) => { config.modules.projects = v; });
+      pick(t("Body text"), t("List items and calendar numbers."), config.text, (v) => { config.text = v; });
+      pick(t("Heading"), t("Fallback color for card headings, used when a module has no color of its own."), config.heading, (v) => { config.heading = v; });
+      pick(t("Accent"), t("Hover borders, today's highlight, and fallback icon backgrounds."), config.accent, (v) => { config.accent = v; });
+      pick(t("Diary module"), t("The calendar's month label and today's highlight."), config.modules.diary, (v) => { config.modules.diary = v; });
+      pick(t("Shortcuts module"), t("The icon color on the left of each shortcut."), config.modules.shortcuts, (v) => { config.modules.shortcuts = v; });
+      pick(t("Tasks module"), t("The task checkbox color."), config.modules.tasks, (v) => { config.modules.tasks = v; });
+      pick(t("Active notes module"), t("The heading color on active-note cards."), config.modules.projects, (v) => { config.modules.projects = v; });
     };
 
     new Setting(root)
-      .setName("主题")
-      .setDesc("选一套预设会立刻作用到主页。四套色值都来自 obsidian-color-boost；切到深色模式时亮度会自动提上来，不用手改。")
+      .setName(t("Theme"))
+      .setDesc(t("Pick a preset and it applies to the homepage immediately. All four palettes come from obsidian-color-boost; lightness lifts automatically in dark mode, so nothing needs adjusting by hand."))
       .addDropdown((dd) => {
-        dd.addOption("auto", "跟随 Obsidian 主题");
-        for (const [id, preset] of Object.entries(THEME_PRESETS)) dd.addOption(id, preset.label);
-        dd.addOption("custom", "🎨 自定义");
+        dd.addOption("auto", t("Follow Obsidian theme"));
+        for (const [id, preset] of Object.entries(THEME_PRESETS)) dd.addOption(id, t(preset.label));
+        dd.addOption("custom", t("🎨 Custom"));
         dd.setValue(this.plugin.settings.theme);
         dd.onChange(async (value) => {
           this.plugin.settings.theme = value as ThemeId;
@@ -1441,8 +1470,8 @@ class EvolutionSettingTab extends PluginSettingTab {
   }
 
   private fontSettings(root: HTMLElement): void {
-    new Setting(root).setName("Font size（字号）").setHeading();
-    dropdownSetting(root, "整体字号", "主页所有文字统一缩放一档。默认「小」，比 Obsidian 正文字号小一号；觉得紧就调回「标准」或「大」。",
+    new Setting(root).setName(t("Font size")).setHeading();
+    dropdownSetting(root, t("Overall font size"), t("Scales every piece of text on the homepage by one step. Defaults to Small, one notch below Obsidian's body size; switch back to Normal or Large if it feels cramped."),
       this.plugin.settings.fontScale, FONT_SCALE_LABEL, async (value) => {
         this.plugin.settings.fontScale = value;
         await this.plugin.saveSettings();
@@ -1450,28 +1479,28 @@ class EvolutionSettingTab extends PluginSettingTab {
   }
 
   private bannerSettings(root: HTMLElement): void {
-    new Setting(root).setName("Banner and slogan（横幅与标语）").setHeading();
-    textSetting(root, "Banner image", "库内相对路径或 https 链接。不想手写路径，用下面的「添加图片」直接从本地上传。", this.plugin.settings.banner.image, async (value) => { this.plugin.settings.banner.image = value; await this.plugin.saveSettings(); });
-    new Setting(root).setName("添加图片").setDesc("从本地选择一张图片，上传后保存在库根目录。").addButton((btn) => btn.setButtonText("选择并上传").onClick(() => void this.uploadBannerImage()));
-    textSetting(root, "Banner title", "Main heading shown over the banner.", this.plugin.settings.banner.title, async (value) => { this.plugin.settings.banner.title = value; await this.plugin.saveSettings(); });
-    alignSetting(root, "Title alignment（标题位置）", "标题靠左、居中还是靠右。", this.plugin.settings.banner.titleAlign, async (value) => { this.plugin.settings.banner.titleAlign = value; await this.plugin.saveSettings(); });
-    colorSetting(root, "Title color（标题颜色）", "横幅标题文字颜色，留空用白色。", this.plugin.settings.banner.titleColor, async (value) => { this.plugin.settings.banner.titleColor = value; await this.plugin.saveSettings(); });
-    textSetting(root, "Banner description", "Short introduction shown under the title.", this.plugin.settings.banner.description, async (value) => { this.plugin.settings.banner.description = value; await this.plugin.saveSettings(); });
-    alignSetting(root, "Description alignment（描述位置）", "描述文字靠左、居中还是靠右，和标题分开设置。", this.plugin.settings.banner.descriptionAlign, async (value) => { this.plugin.settings.banner.descriptionAlign = value; await this.plugin.saveSettings(); });
-    colorSetting(root, "Description color（描述颜色）", "描述文字颜色，留空用白色。", this.plugin.settings.banner.descriptionColor, async (value) => { this.plugin.settings.banner.descriptionColor = value; await this.plugin.saveSettings(); });
-    textSetting(root, "Slogan", "A separate text-only line below the banner.", this.plugin.settings.slogan, async (value) => { this.plugin.settings.slogan = value; await this.plugin.saveSettings(); });
-    colorSetting(root, "Slogan color（标语颜色）", "标语文字颜色，留空跟随主题灰。", this.plugin.settings.sloganColor, async (value) => { this.plugin.settings.sloganColor = value; await this.plugin.saveSettings(); });
+    new Setting(root).setName(t("Banner and slogan")).setHeading();
+    textSetting(root, t("Banner image"), t("A vault-relative path or an https link. Prefer not to type paths? Use “Add image” below to upload one from your computer."), this.plugin.settings.banner.image, async (value) => { this.plugin.settings.banner.image = value; await this.plugin.saveSettings(); });
+    new Setting(root).setName(t("Add image")).setDesc(t("Choose an image from your computer; it is saved to the vault root.")).addButton((btn) => btn.setButtonText(t("Choose and upload")).onClick(() => void this.uploadBannerImage()));
+    textSetting(root, t("Banner title"), t("Main heading shown over the banner."), this.plugin.settings.banner.title, async (value) => { this.plugin.settings.banner.title = value; await this.plugin.saveSettings(); });
+    alignSetting(root, t("Title alignment"), t("Whether the title sits left, center, or right."), this.plugin.settings.banner.titleAlign, async (value) => { this.plugin.settings.banner.titleAlign = value; await this.plugin.saveSettings(); });
+    colorSetting(root, t("Title color"), t("Color for the banner title. Leave blank for white."), this.plugin.settings.banner.titleColor, async (value) => { this.plugin.settings.banner.titleColor = value; await this.plugin.saveSettings(); });
+    textSetting(root, t("Banner description"), t("Short introduction shown under the title."), this.plugin.settings.banner.description, async (value) => { this.plugin.settings.banner.description = value; await this.plugin.saveSettings(); });
+    alignSetting(root, t("Description alignment"), t("Left, center, or right for the description — set separately from the title."), this.plugin.settings.banner.descriptionAlign, async (value) => { this.plugin.settings.banner.descriptionAlign = value; await this.plugin.saveSettings(); });
+    colorSetting(root, t("Description color"), t("Color for the description text. Leave blank for white."), this.plugin.settings.banner.descriptionColor, async (value) => { this.plugin.settings.banner.descriptionColor = value; await this.plugin.saveSettings(); });
+    textSetting(root, t("Slogan"), t("A separate text-only line below the banner."), this.plugin.settings.slogan, async (value) => { this.plugin.settings.slogan = value; await this.plugin.saveSettings(); });
+    colorSetting(root, t("Slogan color"), t("Color for the slogan text. Leave blank to follow the theme's muted color."), this.plugin.settings.sloganColor, async (value) => { this.plugin.settings.sloganColor = value; await this.plugin.saveSettings(); });
   }
 
   /** 模块布局：每个模块放左列还是右列，以及从上到下的顺序。 */
   private layoutSettings(root: HTMLElement): void {
-    new Setting(root).setName("Layout（模块布局）").setHeading();
-    root.createEl("p", { cls: "evolution-settings__note", text: "主页上能直接动手的只有两件事：按住卡片空白处上下拖动换顺序（只在同一列里挪），拖卡片底边的小横杠改高度（双击横杠恢复自动高度）。换列、改宽窄都在这一页做。" });
-    root.createEl("p", { cls: "evolution-settings__note", text: "每个模块都能放左列或右列，用 ↑ / ↓ 调整上下顺序。顺序是整条列表通用的：同列内按这个顺序从上往下排。" });
-    root.createEl("p", { cls: "evolution-settings__note", text: "「半宽」的模块两两并排：同一列里两条半宽就横着放一起，落单的那条自己占满整行。想在右列横放两个模块，把那两个都切成半宽就行。左右怎么摆只在设置里改，主页上的拖拽只管上下顺序。" });
-    root.createEl("p", { cls: "evolution-settings__note", text: "关掉的模块（在下面各自的小节里关）会灰着显示，不会出现在主页。某一列一个模块都没分到时，另一列自动占满整行。" });
+    new Setting(root).setName(t("Layout")).setHeading();
+    root.createEl("p", { cls: "evolution-settings__note", text: t("Only two things can be done directly on the homepage: drag a card's blank area up or down to reorder (within its own column), and drag the small handle at a card's bottom edge to set its height (double-click the handle to go back to auto height). Switching columns or changing width is done here in settings.") });
+    root.createEl("p", { cls: "evolution-settings__note", text: t("Every module can sit in the left or right column; use ↑ / ↓ to change its order. The order is shared by the whole list: within a column, modules are stacked top to bottom following it.") });
+    root.createEl("p", { cls: "evolution-settings__note", text: t("“Half width” modules pair up: two halves in the same column sit side by side, while a lone half takes the full row. To place two modules side by side in the right column, switch both of them to half width. Left/right placement changes only in settings; dragging on the homepage reorders vertically.") });
+    root.createEl("p", { cls: "evolution-settings__note", text: t("Modules turned off in their own sections below appear greyed out and stay off the homepage. When a column ends up with no modules, the other one takes the full width.") });
 
-    textSetting(root, "Left column width", `左右两列的宽度比，左列占百分之多少，${MIN_LEFT_WIDTH} 到 ${MAX_LEFT_WIDTH}。主页上拖两列中间那条竖条也能改。`, String(this.plugin.settings.leftWidth), async (value) => {
+    textSetting(root, t("Left column width"), t("Width ratio of the two columns — how many percent the left column takes, {min} to {max}. You can also drag the divider between them on the homepage.", { min: MIN_LEFT_WIDTH, max: MAX_LEFT_WIDTH }), String(this.plugin.settings.leftWidth), async (value) => {
       this.plugin.settings.leftWidth = clampNumber(value, MIN_LEFT_WIDTH, MAX_LEFT_WIDTH, 42);
       await this.plugin.saveSettings();
     });
@@ -1490,14 +1519,14 @@ class EvolutionSettingTab extends PluginSettingTab {
     if (!enabled) row.addClass("is-off");
     const name = row.createDiv({ cls: "evolution-layout-editor__name" });
     name.createSpan({ text: MODULE_LABEL[entry.key] });
-    if (!enabled) name.createSpan({ cls: "evolution-layout-editor__off", text: "已关闭" });
+    if (!enabled) name.createSpan({ cls: "evolution-layout-editor__off", text: t("Off") });
 
     const sides = row.createDiv({ cls: "evolution-layout-editor__sides" });
-    ([["left", "左列"], ["right", "右列"]] as Array<[ColumnSide, string]>).forEach(([side, label]) => {
+    ([["left", t("Left column")], ["right", t("Right column")]] as Array<[ColumnSide, string]>).forEach(([side, label]) => {
       const button = sides.createEl("button", {
         cls: entry.column === side ? "evolution-layout-editor__side is-active" : "evolution-layout-editor__side",
         text: label,
-        attr: { "aria-label": `把${MODULE_LABEL[entry.key]}放到${label}`, title: `放到${label}` }
+        attr: { "aria-label": t("Move {name} to {column}", { name: t(MODULE_LABEL[entry.key]), column: label }), title: t("Move to {column}", { column: label }) }
       });
       button.addEventListener("click", () => void this.plugin.setLayoutColumn(index, side).then(rerender));
     });
@@ -1507,20 +1536,20 @@ class EvolutionSettingTab extends PluginSettingTab {
       cls: entry.span === "half" ? "evolution-layout-editor__span is-half" : "evolution-layout-editor__span",
       text: SPAN_LABEL[entry.span],
       attr: {
-        "aria-label": "模块宽度",
-        title: entry.span === "half" ? "当前半宽：同一列里两条半宽会并排，点一下改回整行" : "当前整行：点一下改半宽，同列两条半宽会并排"
+        "aria-label": t("Module width"),
+        title: entry.span === "half" ? t("Currently half width: two halves in the same column sit side by side; click to take the full row again.") : t("Currently full row: click to switch to half width; two halves in the same column will sit side by side.")
       }
     });
     spanButton.addEventListener("click", () => void this.plugin.setLayoutSpan(entry.key, entry.span === "half" ? "full" : "half").then(rerender));
     const heightButton = tools.createEl("button", {
       cls: "evolution-layout-editor__height",
-      text: entry.height > 0 ? `${entry.height}px` : "自适应",
-      attr: { "aria-label": "卡片高度", title: entry.height > 0 ? "点一下恢复自动高度" : "当前跟着内容走，可以在主页拖卡片底边改" }
+      text: entry.height > 0 ? `${entry.height}px` : t("Auto"),
+      attr: { "aria-label": t("Card height"), title: entry.height > 0 ? t("Click to restore auto height.") : t("Follows its content right now; drag the card's bottom edge on the homepage to change it.") }
     });
     if (entry.height <= 0) heightButton.disabled = true;
     heightButton.addEventListener("click", () => void this.plugin.setLayoutHeight(entry.key, 0).then(rerender));
-    iconTool(tools, "arrow-up", "上移", index === 0, () => void this.plugin.moveLayoutEntry(index, -1).then(rerender));
-    iconTool(tools, "arrow-down", "下移", index === this.plugin.settings.layout.length - 1, () => void this.plugin.moveLayoutEntry(index, 1).then(rerender));
+    iconTool(tools, "arrow-up", t("Move up"), index === 0, () => void this.plugin.moveLayoutEntry(index, -1).then(rerender));
+    iconTool(tools, "arrow-down", t("Move down"), index === this.plugin.settings.layout.length - 1, () => void this.plugin.moveLayoutEntry(index, 1).then(rerender));
   }
 
   private async uploadBannerImage(): Promise<void> {
@@ -1538,57 +1567,57 @@ class EvolutionSettingTab extends PluginSettingTab {
         await this.plugin.saveSettings();
         this.plugin.pendingFocus = "banner";
         this.display();
-        new Notice(`图片已保存到库根目录：${path}`);
+        new Notice(t("Image saved to the vault root: {path}", { path }));
       } catch (error) {
-        new Notice(`上传失败：${error instanceof Error ? error.message : String(error)}`);
+        new Notice(t("Could not upload: {message}", { message: error instanceof Error ? error.message : String(error) }));
       }
     };
     input.click();
   }
 
   private diarySettings(root: HTMLElement): void {
-    new Setting(root).setName("Diary（日记）").setHeading();
-    textSetting(root, "日记根目录", "年份目录之上的那一层，可用 {YYYY} {MM} {DD}。留空则沿用核心「日记」插件的目录。", this.plugin.settings.diary.folder, async (value) => { this.plugin.settings.diary.folder = value; await this.plugin.saveSettings(); });
-    textSetting(root, "年份子目录", "追加在根目录之后的一层，默认 {YYYY}年。留空表示不分年份。", this.plugin.settings.diary.yearPattern, async (value) => { this.plugin.settings.diary.yearPattern = value; await this.plugin.saveSettings(); });
-    textSetting(root, "日记模板", "留空则沿用核心「日记」插件的模板，支持 {{date:YYYY.MM.DD}} 等变量。", this.plugin.settings.diary.template, async (value) => { this.plugin.settings.diary.template = value; await this.plugin.saveSettings(); });
-    textSetting(root, "文件名格式", "支持 YYYY、MM、DD。留空沿用核心「日记」插件的格式。", this.plugin.settings.diary.dateFormat, async (value) => { this.plugin.settings.diary.dateFormat = value; await this.plugin.saveSettings(); });
-    textSetting(root, "Status field", "Frontmatter field used for calendar colors: 红灯/🔴→红, 黄灯/🟡→黄, 绿灯/🟢→绿, 或直接填 #rrggbb 色值。", this.plugin.settings.diary.statusField, async (value) => { this.plugin.settings.diary.statusField = value; await this.plugin.saveSettings(); });
+    new Setting(root).setName(t(MODULE_LABEL.diary)).setHeading();
+    textSetting(root, t("Diary folder"), t("The level above year folders. Supports {YYYY} {MM} {DD}. Leave blank to reuse the core Daily notes plugin's folder."), this.plugin.settings.diary.folder, async (value) => { this.plugin.settings.diary.folder = value; await this.plugin.saveSettings(); });
+    textSetting(root, t("Year subfolder"), t("One level appended after the root folder; defaults to {YYYY}. Leave blank for no per-year folders."), this.plugin.settings.diary.yearPattern, async (value) => { this.plugin.settings.diary.yearPattern = value; await this.plugin.saveSettings(); });
+    textSetting(root, t("Diary template"), t("Leave blank to reuse the core Daily notes plugin's template. Supports variables such as {{date:YYYY.MM.DD}}."), this.plugin.settings.diary.template, async (value) => { this.plugin.settings.diary.template = value; await this.plugin.saveSettings(); });
+    textSetting(root, t("File name format"), t("Supports YYYY, MM, and DD. Leave blank to reuse the core Daily notes plugin's format."), this.plugin.settings.diary.dateFormat, async (value) => { this.plugin.settings.diary.dateFormat = value; await this.plugin.saveSettings(); });
+    textSetting(root, t("Status field"), t("Frontmatter field read for calendar colors: write red, amber, or green (🔴 🟡 🟢) to get that color, or put in a raw #rrggbb value."), this.plugin.settings.diary.statusField, async (value) => { this.plugin.settings.diary.statusField = value; await this.plugin.saveSettings(); });
   }
 
   private taskSettings(root: HTMLElement): void {
-    new Setting(root).setName("Open tasks（待办任务）").setHeading();
-    root.createEl("p", { cls: "evolution-settings__note", text: "主页待办卡片顶部可以直接添加任务：写一行字回车即可，不用先打开笔记。截止时间和优先级是可选输入，填了会按 Tasks 插件的格式写进同一行，例如「- [ ] 交周报 ⏫ 📅 2026-09-20」。" });
-    root.createEl("p", { cls: "evolution-settings__note", text: "每条任务右侧有铅笔按钮，点开就地改内容、截止时间、优先级，回车后直接改写原笔记里那一行；已过期的截止日期会标红。" });
-    dropdownSetting(root, "完成日期（✅）", "在主页勾选完成时，要不要在行尾补一条 ✅ YYYY-MM-DD。主页自己认这个符号（会显示成「上次完成」徽章），所以不装 Tasks 插件也照样有意义；装了 Tasks 的话它那边也统计得到。",
+    new Setting(root).setName(t(MODULE_LABEL.tasks)).setHeading();
+    root.createEl("p", { cls: "evolution-settings__note", text: t("You can add tasks right from the tasks card: type a line and press Enter, no need to open a note first. Due date and priority are optional, and follow the Tasks plugin format on the same line — for example “- [ ] Weekly report ⏫ 📅 2026-09-20”.") });
+    root.createEl("p", { cls: "evolution-settings__note", text: t("Each task has a pencil button on the right. It opens inline to edit the text, due date, and priority; pressing Enter rewrites that very line in the source note. Overdue dates are shown in red.") });
+    dropdownSetting(root, t("Completion date (✅)"), t("When you tick a task on the homepage, whether to append ✅ YYYY-MM-DD to the line. The homepage understands this marker on its own (it shows as a “Last done” badge), so it is useful without the Tasks plugin — and Tasks counts it too if you use it."),
       this.plugin.settings.tasks.doneDate, DONE_DATE_LABEL, async (value) => {
         this.plugin.settings.tasks.doneDate = value;
         await this.plugin.saveSettings();
       });
-    textSetting(root, "Task folders", "Comma-separated folders. Tasks in every descendant note are included.", this.plugin.settings.tasks.folders.join(", "), async (value) => { this.plugin.settings.tasks.folders = splitPaths(value); await this.plugin.saveSettings(); });
-    textSetting(root, "Task notes", "Comma-separated individual task note paths. 新任务会保存到这里的第一条笔记（文件不存在时自动新建）；整栏留空时，新任务改写到当日日记，日记不存在就新建当天日记。", this.plugin.settings.tasks.files.join(", "), async (value) => { this.plugin.settings.tasks.files = splitPaths(value); await this.plugin.saveSettings(); });
+    textSetting(root, t("Task folders"), t("Comma-separated folders. Tasks in every descendant note are included."), this.plugin.settings.tasks.folders.join(", "), async (value) => { this.plugin.settings.tasks.folders = splitPaths(value); await this.plugin.saveSettings(); });
+    textSetting(root, t("Task notes"), t("Comma-separated paths of individual task notes. New tasks go into the first note listed here (created if missing). Leave the whole field empty and new tasks land in today's daily note, creating it if needed."), this.plugin.settings.tasks.files.join(", "), async (value) => { this.plugin.settings.tasks.files = splitPaths(value); await this.plugin.saveSettings(); });
   }
 
   private projectSettings(root: HTMLElement): void {
-    new Setting(root).setName("Active notes（活跃笔记）").setHeading();
-    textSetting(root, "Note folders", "Comma-separated folders; leave blank to search the whole vault.", this.plugin.settings.projects.folders.join(", "), async (value) => { this.plugin.settings.projects.folders = splitPaths(value); await this.plugin.saveSettings(); });
-    textSetting(root, "Required tags", "多个标签用英文逗号「,」分隔，例如“项目,关注,daily”——任一标签命中即匹配（OR 关系，不需要全中）。带不带前导 # 都行，前后空格自动忽略。嵌套子标签直接写「项目/关注」。标签需与笔记里实际写的完全一致，比如笔记里写 #AI，这里也写 AI，写 ai 不会命中。", this.plugin.settings.projects.tags.join(", "), async (value) => { this.plugin.settings.projects.tags = splitPaths(value); await this.plugin.saveSettings(); });
-    textSetting(root, "Maximum notes", "How many recently updated notes to display.", String(this.plugin.settings.projects.limit), async (value) => { this.plugin.settings.projects.limit = clampNumber(value, 1, 50, 12); await this.plugin.saveSettings(); });
+    new Setting(root).setName(t(MODULE_LABEL.projects)).setHeading();
+    textSetting(root, t("Note folders"), t("Comma-separated folders; leave blank to search the whole vault."), this.plugin.settings.projects.folders.join(", "), async (value) => { this.plugin.settings.projects.folders = splitPaths(value); await this.plugin.saveSettings(); });
+    textSetting(root, t("Required tags"), t("Separate tags with commas, for example “project,watch,daily” — any single tag matches (OR, not all required). Leading # is optional and surrounding spaces are trimmed. Nested tags use a slash, as in “project/watch”. Tags must match the note exactly: if the note says #AI, write AI — ai will not match."), this.plugin.settings.projects.tags.join(", "), async (value) => { this.plugin.settings.projects.tags = splitPaths(value); await this.plugin.saveSettings(); });
+    textSetting(root, t("Maximum notes"), t("How many recently updated notes to display."), String(this.plugin.settings.projects.limit), async (value) => { this.plugin.settings.projects.limit = clampNumber(value, 1, 50, 12); await this.plugin.saveSettings(); });
   }
 
   private shortcutSettings(root: HTMLElement): void {
-    new Setting(root).setName("Shortcuts（快捷入口）").setHeading();
-    root.createEl("p", { text: "每条入口只填两项：「名称」是主页上显示的字，「链接」是要打开的东西。加几条就有几条，主页会按顺序往下排。" });
-    root.createEl("p", { cls: "evolution-settings__note", text: "链接可以填网页地址（https://…）、库内笔记路径（例如 工作/项目/周复盘.md）、或本地文件的 file:/// 链接与绝对路径。不用选类型，点开时自动判断。" });
-    root.createEl("p", { cls: "evolution-settings__note", text: "按住任意一条入口上下拖动，可以调整主页上从上到下的顺序。每条右上角有 ↑ / ↓ 按钮，做不到拖动时也能用。" });
+    new Setting(root).setName(t(MODULE_LABEL.shortcuts)).setHeading();
+    root.createEl("p", { text: t("Each shortcut has exactly two fields: Name is what shows on the homepage, Link is what opens. Add as many as you like; the homepage lists them in order.") });
+    root.createEl("p", { cls: "evolution-settings__note", text: t("The link can be a web address (https://…), a vault note path (for example work/projects/weekly-review.md), or a file:/// link or absolute path to a local file. There is no type to pick — the target decides how it opens.") });
+    root.createEl("p", { cls: "evolution-settings__note", text: t("Drag any shortcut up or down to change its order on the homepage. Each row also has ↑ / ↓ buttons at the top right when dragging is awkward.") });
 
     const editor = root.createDiv({ cls: "evolution-shortcuts-editor" });
     const rerender = (): void => {
       editor.empty();
       const list = this.plugin.settings.shortcuts;
-      if (!list.length) editor.createEl("p", { cls: "evolution-empty", text: "还没有入口，点下面的按钮加一条。" });
+      if (!list.length) editor.createEl("p", { cls: "evolution-empty", text: t("No shortcuts yet — use the button below to add one.") });
       list.forEach((shortcut, index) => this.shortcutRow(editor, shortcut, index, rerender));
       const footer = editor.createDiv({ cls: "evolution-shortcuts-editor__footer" });
-      const add = footer.createEl("button", { cls: "mod-cta", text: "+ 添加快捷入口" });
+      const add = footer.createEl("button", { cls: "mod-cta", text: t("+ Add shortcut") });
       add.addEventListener("click", () => {
         void this.plugin.addShortcut().then(() => {
           rerender();
@@ -1603,21 +1632,21 @@ class EvolutionSettingTab extends PluginSettingTab {
   private shortcutRow(root: HTMLElement, shortcut: Shortcut, index: number, rerender: () => void): void {
     const row = root.createDiv({ cls: "evolution-shortcuts-editor__row" });
     const head = row.createDiv({ cls: "evolution-shortcuts-editor__head" });
-    head.createSpan({ cls: "evolution-shortcuts-editor__index", text: `入口 ${index + 1}` });
+    head.createSpan({ cls: "evolution-shortcuts-editor__index", text: t("Shortcut {index}", { index: index + 1 }) });
     const tools = head.createDiv({ cls: "evolution-shortcuts-editor__tools" });
     const total = this.plugin.settings.shortcuts.length;
-    iconTool(tools, "arrow-up", "上移", index === 0, () => void this.plugin.reorderShortcut(index, index - 1).then(rerender));
-    iconTool(tools, "arrow-down", "下移", index === total - 1, () => void this.plugin.reorderShortcut(index, index + 2).then(rerender));
-    iconTool(tools, "external-link", "测试打开", false, () => void openShortcutTarget(this.app, this.plugin.settings.shortcuts[index]));
-    iconTool(tools, "trash-2", "删除这条", false, () => void this.plugin.removeShortcut(index).then(rerender));
+    iconTool(tools, "arrow-up", t("Move up"), index === 0, () => void this.plugin.reorderShortcut(index, index - 1).then(rerender));
+    iconTool(tools, "arrow-down", t("Move down"), index === total - 1, () => void this.plugin.reorderShortcut(index, index + 2).then(rerender));
+    iconTool(tools, "external-link", t("Test open"), false, () => void openShortcutTarget(this.app, this.plugin.settings.shortcuts[index]));
+    iconTool(tools, "trash-2", t("Delete this"), false, () => void this.plugin.removeShortcut(index).then(rerender));
 
     // 打字时只改内存，停手 400ms 再落盘，避免每敲一个字就重刷主页。
     const persist = debounce(() => void this.plugin.saveSettings(), 400);
 
     const nameField = row.createDiv({ cls: "evolution-shortcuts-editor__field" });
-    nameField.createSpan({ cls: "evolution-shortcuts-editor__field-label", text: "名称" });
+    nameField.createSpan({ cls: "evolution-shortcuts-editor__field-label", text: t("Name") });
     const nameInput = nameField.createEl("input", { type: "text", cls: "evolution-shortcuts-editor__input" });
-    nameInput.placeholder = "例如：运动周报";
+    nameInput.placeholder = t("For example: weekly running report");
     nameInput.value = shortcut.label;
     nameInput.addEventListener("input", () => {
       shortcut.label = nameInput.value;
@@ -1625,9 +1654,9 @@ class EvolutionSettingTab extends PluginSettingTab {
     });
 
     const linkField = row.createDiv({ cls: "evolution-shortcuts-editor__field" });
-    linkField.createSpan({ cls: "evolution-shortcuts-editor__field-label", text: "链接" });
+    linkField.createSpan({ cls: "evolution-shortcuts-editor__field-label", text: t("Link") });
     const linkInput = linkField.createEl("input", { type: "text", cls: "evolution-shortcuts-editor__input" });
-    linkInput.placeholder = "https://… 或 库内笔记路径 或 file:///…/x.html";
+    linkInput.placeholder = t("https://… , a vault note path, or file:///…/x.html");
     linkInput.value = shortcut.target;
     linkInput.addEventListener("input", () => {
       shortcut.target = linkInput.value;
@@ -1690,8 +1719,8 @@ interface ResolvedTheme {
  */
 const THEME_PRESETS: Record<Exclude<ThemeId, "auto" | "custom">, { label: string; note: string; palette: ThemePalette }> = {
   "deep-sea": {
-    label: "🌊 深蓝之海",
-    note: "深海暗流，从幽暗到海面微光",
+    label: "🌊 Deep sea",
+    note: "Deep currents, from the dark to the light at the surface",
     palette: {
       heading: "#0B2545",
       text: "#13315C",
@@ -1701,8 +1730,8 @@ const THEME_PRESETS: Record<Exclude<ThemeId, "auto" | "custom">, { label: string
     }
   },
   sunlit: {
-    label: "🌅 逐光之海",
-    note: "阳光穿透海水，暖橘到深蓝",
+    label: "🌅 Sunlit sea",
+    note: "Sunlight through water, warm orange into deep blue",
     palette: {
       heading: "#9B2226",
       text: "#001219",
@@ -1712,8 +1741,8 @@ const THEME_PRESETS: Record<Exclude<ThemeId, "auto" | "custom">, { label: string
     }
   },
   blossom: {
-    label: "🌸 柔和粉色",
-    note: "玫瑰与藕荷的粉彩，温润安静不刺眼",
+    label: "🌸 Soft blossom",
+    note: "Pastels of rose and lotus — gentle and quiet, never harsh",
     // 这套原色刻意拉开明暗（深玫红 → 亮粉 → 藕荷紫），映射之后才留得住层次；
     // 早先那版四支都是极淡的粉蓝，压进亮度带后齐平成一个色，看着就跟别的主题没差别。
     palette: {
@@ -1726,8 +1755,8 @@ const THEME_PRESETS: Record<Exclude<ThemeId, "auto" | "custom">, { label: string
     }
   },
   rainbow: {
-    label: "🌈 全色彩虹",
-    note: "高饱和彩虹，红橙黄绿蓝紫",
+    label: "🌈 Full rainbow",
+    note: "High-saturation rainbow: red through violet",
     palette: {
       heading: "#FF6B6B",
       text: "#748FFC",
@@ -1933,9 +1962,9 @@ function applyThemeVars(el: HTMLElement, theme: ResolvedTheme | null): void {
 }
 
 function themeNote(id: ThemeId): string {
-  if (id === "auto") return "主页跟着 Obsidian 主题走，不覆盖任何颜色。";
-  if (id === "custom") return "逐支指定颜色，改完立刻生效。";
-  return `${THEME_PRESETS[id].note}。`;
+  if (id === "auto") return t("The homepage follows your Obsidian theme and overrides no colors.");
+  if (id === "custom") return t("Pick each color yourself; changes apply immediately.");
+  return t(THEME_PRESETS[id].note);
 }
 
 function themeSwatch(parent: HTMLElement, label: string, color: string): void {
@@ -1949,19 +1978,19 @@ function customColorSetting(root: HTMLElement, name: string, desc: string, value
 }
 
 const COLOR_PRESETS: Record<string, string> = {
-  "跟随主题": "",
-  "红 #ff4d4d": "#ff4d4d",
-  "橙 #f5a623": "#f5a623",
-  "金 #d4af37": "#d4af37",
-  "绿 #2ecc71": "#2ecc71",
-  "蓝 #4a90d9": "#4a90d9",
-  "紫 #8e6bc9": "#8e6bc9",
-  "黑 #1a1a1a": "#1a1a1a",
-  "白 #ffffff": "#ffffff"
+  "Follow theme": "",
+  "Red #ff4d4d": "#ff4d4d",
+  "Orange #f5a623": "#f5a623",
+  "Gold #d4af37": "#d4af37",
+  "Green #2ecc71": "#2ecc71",
+  "Blue #4a90d9": "#4a90d9",
+  "Purple #8e6bc9": "#8e6bc9",
+  "Black #1a1a1a": "#1a1a1a",
+  "White #ffffff": "#ffffff"
 };
 function colorSetting(root: HTMLElement, name: string, desc: string, value: string, update: (value: string) => Promise<void>): void {
   new Setting(root).setName(name).setDesc(desc).addDropdown((dd) => {
-    for (const [label, hex] of Object.entries(COLOR_PRESETS)) dd.addOption(hex, label);
+    for (const [label, hex] of Object.entries(COLOR_PRESETS)) dd.addOption(hex, t(label));
     dd.setValue(value);
     dd.onChange(async (next) => { await update(next); });
   });
@@ -1972,14 +2001,14 @@ function colorSetting(root: HTMLElement, name: string, desc: string, value: stri
 function dropdownSetting<K extends string>(root: HTMLElement, name: string, desc: string, value: K, labels: Record<K, string>, update: (value: K) => Promise<void>): void {
   new Setting(root).setName(name).setDesc(desc).addDropdown((dd) => {
     for (const key of Object.keys(labels) as K[]) dd.addOption(key, labels[key]);
-    dd.setValue(value);
+    for (const key of Object.keys(labels) as K[]) dd.addOption(key, t(labels[key]));
     dd.onChange(async (next) => { await update(next as K); });
   });
 }
 
 function alignSetting(root: HTMLElement, name: string, desc: string, value: BannerAlign, update: (value: BannerAlign) => Promise<void>): void {
   new Setting(root).setName(name).setDesc(desc).addDropdown((dd) => {
-    for (const align of BANNER_ALIGNS) dd.addOption(align, ALIGN_LABEL[align]);
+    for (const align of BANNER_ALIGNS) dd.addOption(align, t(ALIGN_LABEL[align]));
     dd.setValue(value);
     dd.onChange(async (next) => { await update(normalizeAlign(next)); });
   });
@@ -1998,10 +2027,13 @@ function sameDate(a: Date, b: Date): boolean { return a.getFullYear() === b.getF
 // 日历红绿灯：当日状态命中关键词即着色；直接填 #rrggbb 色值也支持。
 const STATUS_COLORS: Array<[string, string]> = [
   ["红", "#ff4d4d"],
+  ["red", "#ff4d4d"],
   ["🔴", "#ff4d4d"],
   ["黄", "#f5a623"],
+  ["amber", "#f5a623"],
   ["🟡", "#f5a623"],
   ["绿", "#2ecc71"],
+  ["green", "#2ecc71"],
   ["🟢", "#2ecc71"]
 ];
 function statusColor(status: string): string {
@@ -2245,15 +2277,15 @@ async function openShortcutTarget(app: App, shortcut: Shortcut): Promise<void> {
       if (file instanceof TFile) {
         // Markdown / 白板用 Obsidian 自己的视图打开，HTML 等交给系统默认程序
         if (file.extension === "md" || file.extension === "canvas") await app.workspace.getLeaf("tab").openFile(file);
-        else if (!(await openLocalBySystem(app, file.path, localPath))) new Notice(`打不开文件：${relative}`);
+        else if (!(await openLocalBySystem(app, file.path, localPath))) new Notice(t("Could not open the file: {file}", { file: relative }));
         return;
       }
-      new Notice(`库内找不到文件：${relative}`);
+      new Notice(t("File not found in the vault: {file}", { file: relative }));
       return;
     }
 
     if (await openLocalBySystem(app, null, localPath)) return;
-    new Notice(`打不开本地文件：${localPath}`);
+    new Notice(t("Could not open the local file: {file}", { file: localPath }));
     return;
   }
 
@@ -2262,7 +2294,7 @@ async function openShortcutTarget(app: App, shortcut: Shortcut): Promise<void> {
     const file = app.vault.getAbstractFileByPath(normalizePath(candidate));
     if (file instanceof TFile) { await app.workspace.getLeaf("tab").openFile(file); return; }
   }
-  new Notice(`找不到文件：${target}`);
+  new Notice(t("File not found: {target}", { target }));
 }
 async function ensureFolder(app: App, folder: string): Promise<void> {
   const parts = normalizePath(folder).split("/").filter(Boolean);

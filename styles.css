@@ -151,7 +151,8 @@
 .evolution-card__header--bare { position: absolute; top: 14px; right: 14px; margin: 0; z-index: 2; }
 .evolution-card__header--bare ~ .evolution-calendar__month,
 .evolution-card__header--bare ~ .evolution-empty { padding-right: 30px; }
-.evolution-card__title { margin: 0; font-size: calc(1rem * var(--evolution-font-scale, 1)); font-weight: 600; color: var(--evolution-module, var(--evolution-heading)); }
+/* 双语之后模块名更长（Active notes / 活跃笔记），标题压到 0.85rem，和正文拉开主次又不至于看不清。 */
+.evolution-card__title { margin: 0; font-size: calc(0.85rem * var(--evolution-font-scale, 1)); font-weight: 600; letter-spacing: 0.01em; color: var(--evolution-module, var(--evolution-heading)); }
 .evolution-icon-button { border: 0; cursor: pointer; color: var(--evolution-muted, var(--text-muted)); background: transparent; padding: 4px; border-radius: 6px; }
 .evolution-icon-button:hover { color: var(--evolution-text, var(--text-normal)); background: var(--background-modifier-hover); }
 

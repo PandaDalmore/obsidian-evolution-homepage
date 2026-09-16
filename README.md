@@ -8,6 +8,8 @@ Evolution 是一个可配置的 Obsidian 主页插件。它以笔记本身作为
 
 ## V 1.0.6 功能
 
+- **中英双语整体切换**：设置里「语言」一项选中文或英文，卡片标题、按钮提示、空状态文案和所有配置项会一起切换，任何一种语言下都不会混着另一种。
+
 - **启动时自动打开主页**：设置里新增开关，开启后每次打开这个库会自动打开 Evolution 主页；若主页视图已经在布局中（如恢复上次工作区）则不会重复打开。
 
 - **横幅**：图片 + 标题 + 描述；标题和描述各自单独设置对齐方式（左 / 中 / 右）和颜色
@@ -149,6 +151,8 @@ By PandaDal, author of the WeChat public account **达尔进化论** (PandaDalmo
 
 ## Version 1.0.6
 
+- Whole-interface language switch: pick Chinese or English under **Language** in settings. Card titles, tooltips, empty states, and every setting label flip together — neither language shows traces of the other.
+- Currently open tasks and completed date follow the Tasks emoji format when that plugin is present
 - Banner with an image, title, and description; title and description each have their own alignment (left / center / right) and colour
 - Separate text slogan
 - Module layout: every module can sit in the left or right column and be reordered with ↑ / ↓; when a column ends up empty the other one spans the full row
