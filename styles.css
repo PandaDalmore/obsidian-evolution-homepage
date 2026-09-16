@@ -288,6 +288,25 @@
 .evolution-open:hover { color: var(--evolution-text, var(--text-normal)); background: var(--background-modifier-hover); }
 .evolution-open svg { width: 15px; height: 15px; }
 
+/* ---- 矮窗口自适应 ----------------------------------------------------------
+ * 大显示器一屏放得下；笔记本等矮窗口里两列会出现内部滚动条，内容被藏进滚动区。
+ * 分两档：矮一点先压缩留白尽量塞进一屏；再矮就放弃「一屏放下」，改成整页滚动，
+ * 两列完整展开，保证内容都看得见。按窗口高度自动切换，不需要任何设置。 */
+@media (max-height: 860px) {
+  .evolution-homepage { padding: 8px 18px 18px; }
+  .evolution-slogan { margin: 10px 0; }
+  .evolution-grid,
+  .evolution-split,
+  .evolution-column { gap: 12px; }
+  .evolution-banner__content { padding: 18px; }
+}
+@media (max-height: 660px) {
+  .evolution-homepage { height: auto; min-height: 100%; }
+  .evolution-grid,
+  .evolution-split { flex: 0 0 auto; }
+  .evolution-column { overflow: visible; }
+}
+
 @media (max-width: 760px) {
   .evolution-homepage { height: auto; padding: 8px 14px 14px; }
   .evolution-split { flex-direction: column; }
