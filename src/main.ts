@@ -248,6 +248,8 @@ interface EvolutionSettings {
   shortcuts: Shortcut[];
   tasks: TaskSettings;
   projects: ProjectSettings;
+  /** 开库时是否自动打开 Evolution 主页；已有主页视图则不重复打开。 */
+  openOnStartup: boolean;
 }
 
 /** 字号档位。默认给"小"，主页信息密度高，Obsidian 默认字号看着偏大。 */
@@ -285,7 +287,8 @@ const DEFAULT_SETTINGS: EvolutionSettings = {
   diary: { enabled: true, folder: "", yearPattern: "{YYYY}年", template: "", dateFormat: "YYYY.MM.DD", statusField: "当日状态" },
   shortcuts: [],
   tasks: { enabled: true, folders: [], files: [], doneDate: "always" },
-  projects: { enabled: true, folders: [], tags: [], limit: 12 }
+  projects: { enabled: true, folders: [], tags: [], limit: 12 },
+  openOnStartup: false
 };
 
 export default class EvolutionPlugin extends Plugin {
@@ -311,6 +314,12 @@ export default class EvolutionPlugin extends Plugin {
     this.registerEvent(this.app.workspace.on("css-change", () => this.scheduleRefresh()));
     // 切回主页标签时补刷：后台那一次本来是要跳过的。
     this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.scheduleRefresh()));
+    // 开库自动打开主页：等布局恢复完再判断，避免覆盖用户的工作区状态。
+    this.app.workspace.onLayoutReady(() => {
+      if (this.settings.openOnStartup && this.app.workspace.getLeavesOfType(VIEW_TYPE_EVOLUTION).length === 0) {
+        void this.openDashboard();
+      }
+    });
   }
 
   // 官方规范：不要在 onunload 里 detach leaves，否则插件重载时用户摆好的布局会被重置。
@@ -1318,6 +1327,17 @@ class EvolutionSettingTab extends PluginSettingTab {
     }
     // 顶层不放标题：插件名在设置侧栏已经显示，官方既不允许插件名也不允许 "General" 这类通用词。
     containerEl.createEl("p", { cls: "evolution-settings__intro", text: "Every path is vault-relative. Settings never include files from the dashboard author’s vault." });
+    new Setting(containerEl)
+      .setName("启动时自动打开主页")
+      .setDesc("开启后，每次打开这个库会自动打开 Evolution 主页；若主页视图已经在布局里（例如恢复上次工作区），则不会重复打开。")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.openOnStartup)
+          .onChange(async (value) => {
+            this.plugin.settings.openOnStartup = value;
+            await this.plugin.saveSettings();
+          })
+      );
     this.themeSettings(containerEl);
     this.fontSettings(containerEl);
     this.layoutSettings(containerEl);

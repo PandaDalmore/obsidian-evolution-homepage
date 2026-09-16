@@ -6,7 +6,9 @@ Evolution 是一个可配置的 Obsidian 主页插件。它以笔记本身作为
 
 > English Version：[Evolution (English)](#evolution-english)
 
-## V 1.0.5 功能
+## V 1.0.6 功能
+
+- **启动时自动打开主页**：设置里新增开关，开启后每次打开这个库会自动打开 Evolution 主页；若主页视图已经在布局中（如恢复上次工作区）则不会重复打开。
 
 - **横幅**：图片 + 标题 + 描述；标题和描述各自单独设置对齐方式（左 / 中 / 右）和颜色
 - **独立的文字标语**
@@ -145,7 +147,7 @@ Evolution is a configurable Obsidian dashboard. It keeps notes as the source of 
 
 By PandaDal, author of the WeChat public account **达尔进化论** (PandaDalmore), writing about personal growth, Obsidian, AI, and systems. Reach me on WeChat at **PandaDal2**.
 
-## Version 1.0.5
+## Version 1.0.6
 
 - Banner with an image, title, and description; title and description each have their own alignment (left / center / right) and colour
 - Separate text slogan
