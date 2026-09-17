@@ -6,7 +6,7 @@ Evolution 是一个可配置的 Obsidian 主页插件。它以笔记本身作为
 
 > English Version：[Evolution (English)](#evolution-english)
 
-## V 1.0.6 功能
+## V 1.0.7 功能
 
 - **中英双语整体切换**：设置里「语言」一项选中文或英文，卡片标题、按钮提示、空状态文案和所有配置项会一起切换，任何一种语言下都不会混着另一种。
 
@@ -149,7 +149,7 @@ Evolution is a configurable Obsidian dashboard. It keeps notes as the source of 
 
 By PandaDal, author of the WeChat public account **达尔进化论** (PandaDalmore), writing about personal growth, Obsidian, AI, and systems. Reach me on WeChat at **PandaDal2**.
 
-## Version 1.0.6
+## Version 1.0.7
 
 - Whole-interface language switch: pick Chinese or English under **Language** in settings. Card titles, tooltips, empty states, and every setting label flip together — neither language shows traces of the other.
 - Currently open tasks and completed date follow the Tasks emoji format when that plugin is present
