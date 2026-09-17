@@ -6,7 +6,9 @@ Evolution 是一个可配置的 Obsidian 主页插件。它以笔记本身作为
 
 > English Version：[Evolution (English)](#evolution-english)
 
-## V 1.0.7 功能
+## 功能
+
+这里列出的是**当前版本具备的全部能力**，每次发版不再重写这一节。某个版本新增或改动了什么，记在文末的[更新日志](#更新日志)里，按版本倒序追加，历史版本一直留着。
 
 - **中英双语整体切换**：设置里「语言」一项选中文或英文，卡片标题、按钮提示、空状态文案和所有配置项会一起切换，任何一种语言下都不会混着另一种。
 
@@ -141,6 +143,49 @@ Evolution 做的每件事都走 Obsidian 自己的 API，只有三处例外—�
 
 本仓库刻意不含任何个人库路径或数据。所有数据源都在安装之后从插件设置里选择。
 
+## 更新日志
+
+每个版本只写它相对上一版的**新增与改动**，不重复已经写过的功能；历史版本一直保留。当前全部功能见上面[功能](#功能)一节。
+
+### 1.0.7（2026-09-17）
+
+- **新增** 中英双语整体切换：设置里「语言」选中文或英文，卡片标题、按钮提示、空状态文案和全部配置项一起切换，任一种语言下都不会混进另一种。
+- **优化** 模块卡片标题字号调小，长标题不再挤压内容。
+- **优化** 横幅整体上移，收紧顶部留白。
+- **优化** 矮窗口自适应：窗口高度低于 860px 时压缩各处间距，低于 660px 时改为整页滚动。
+- **修复** 中文界面下，布局编辑器里的模块名和「整行 / 半宽」按钮仍显示英文。
+- **修复** 主题介绍里误留下 `obsidian-color-boost` 的字样。
+
+### 1.0.6（2026-09-16）
+
+- **新增** 「启动时自动打开主页」开关。开启后每次打开这个库会自动打开主页；主页视图已经在布局里（比如恢复了上次的工作区）时不重复打开。
+
+### 1.0.5（2026-09-15）
+
+- **优化** 设置面板去掉最顶层那个标题，直接以说明段落开头——插件名和「General」这类泛词都会被社区市场审核驳回。
+- **新增** 发版脚本 `scripts/bump-version.mjs`，manifest、package、README 里的版本号一起改，不再有漏改的地方。
+
+### 1.0.4（2026-09-15）
+
+- **优化** 设置标题里不再出现插件名。
+
+### 1.0.3（2026-09-15）
+
+- **修复** 社区市场审核反馈的一批问题：卸载插件时不再 detach leaf；设置标题改用 `setName().setHeading()`；`document.createElement` 换成 `createEl`；emoji 正则补上 `u` 标志；去掉多余的类型断言和 `!important`；frontmatter 类型改为 `unknown`。
+- **新增** 发版工作流补上构建来源证明（attestations）和 Release 正文。
+
+### 1.0.2（2026-09-15）
+
+- **变更** 在 manifest 里声明 `isDesktopOnly: true`。快捷入口可以用系统默认程序打开库外的文件，这条能力只有桌面端有，所以本插件在手机上搜不到、也装不了（原因见上面「用系统默认程序打开文件」）。
+
+### 1.0.1（2026-09-15）
+
+- **变更** 插件 id 和显示名从 `evolution-dashboard` 改为 `evolution-homepage`，目录、CSS 类名、配置里的称呼一并同步。Obsidian 按插件 id 存设置，改名等于换了一个插件，需要按新 id 重新安装一次。
+
+### 1.0.0（2026-09-15）
+
+- **首个版本**：横幅、日记日历、快捷入口、待办清单、活跃笔记、模块布局、主题预设、日记回落、就地加任务、截止日期与优先级徽章。完整说明见上面[功能](#功能)一节。
+
 ---
 
 # Evolution (English)
@@ -149,7 +194,9 @@ Evolution is a configurable Obsidian dashboard. It keeps notes as the source of 
 
 By PandaDal, author of the WeChat public account **达尔进化论** (PandaDalmore), writing about personal growth, Obsidian, AI, and systems. Reach me on WeChat at **PandaDal2**.
 
-## Version 1.0.7
+## Features
+
+This is the full feature set of the **current** build, and it is not rewritten on every release. What each version added or changed lives in the [Changelog](#changelog) at the bottom, newest first, with older entries kept.
 
 - Whole-interface language switch: pick Chinese or English under **Language** in settings. Card titles, tooltips, empty states, and every setting label flip together — neither language shows traces of the other.
 - Currently open tasks and completed date follow the Tasks emoji format when that plugin is present
@@ -279,3 +326,46 @@ The plugin has been submitted to the official community plugin list. Once it lan
 To hack on the code: `npm install` for dependencies, `npm run build` to produce the same three files — overwrite the ones in the plugin folder above.
 
 The repository intentionally contains no personal vault paths or data. Every data source is selected from the plugin settings after installation.
+
+## Changelog
+
+Each entry lists only what that version **added or changed** relative to the one before it; nothing already described is repeated, and older entries are kept. For the current feature set, see [Features](#features) above.
+
+### 1.0.7 (2026-09-17)
+
+- **Added** whole-interface language switch: pick Chinese or English under **Language** in settings. Card titles, tooltips, empty states, and every setting label flip together — neither language shows traces of the other.
+- **Changed** module card titles use a smaller font, so long titles no longer crowd the content.
+- **Changed** the banner sits higher, with tighter top padding.
+- **Changed** short-window adaptation: spacing compresses below 860px of window height, and below 660px the whole page scrolls.
+- **Fixed** module names and the full-row / half-width buttons in the layout editor stayed English while the interface was set to Chinese.
+- **Fixed** a stray mention of `obsidian-color-boost` in the theme introduction.
+
+### 1.0.6 (2026-09-16)
+
+- **Added** an open-on-startup toggle. When it is on, the dashboard opens automatically with the vault; if the view is already in the layout (a restored workspace, say) it is not opened twice.
+
+### 1.0.5 (2026-09-15)
+
+- **Changed** the top-level settings heading is gone; the page now opens with its intro paragraph. Plugin names and generic words like "General" are both rejected in settings headings by the market review.
+- **Added** `scripts/bump-version.mjs`, which moves the version in manifest, package, and README together so none of them gets left behind.
+
+### 1.0.4 (2026-09-15)
+
+- **Changed** the plugin name no longer appears in settings headings.
+
+### 1.0.3 (2026-09-15)
+
+- **Fixed** a batch of findings from the community plugin review: leaves are no longer detached on unload; settings headings use `setName().setHeading()`; `document.createElement` replaced with `createEl`; `u` flag added to emoji regexes; unnecessary type assertions and `!important` removed; frontmatter typed as `unknown`.
+- **Added** build provenance attestations and a release body to the release workflow.
+
+### 1.0.2 (2026-09-15)
+
+- **Changed** the manifest now declares `isDesktopOnly: true`. Opening a shortcut target outside the vault in its system app is a desktop-only capability, so the plugin does not appear in the mobile browser and cannot be installed there (see "Opening files in their system app" above).
+
+### 1.0.1 (2026-09-15)
+
+- **Changed** the plugin id and display name went from `evolution-dashboard` to `evolution-homepage`, with the folder, CSS class names, and wording updated to match. Obsidian stores settings per plugin id, so the rename is effectively a new plugin: install it again under the new id.
+
+### 1.0.0 (2026-09-15)
+
+- **First release**: banner, daily-note calendar, shortcuts, open-task list, active notes, module layout, theme presets, daily-note fallback, in-place task entry, and due-date / priority badges. See [Features](#features) above for the full description.
