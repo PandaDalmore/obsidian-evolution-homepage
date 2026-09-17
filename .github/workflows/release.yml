@@ -46,6 +46,7 @@ jobs:
           body: "Release ${{ steps.build.outputs.tag_name }} of Evolution homepage. See commit history for details."
           draft: false
           prerelease: false
+          overwrite_files: true
           files: |
             dist/main.js
             dist/manifest.json
