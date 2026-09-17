@@ -284,7 +284,18 @@ const ZH: Record<string, string> = {
   Name: "名称",
   "For example: weekly running report": "例如：运动周报",
   Link: "链接",
-  "https://… , a vault note path, or file:///…/x.html": "https://… 或 库内笔记路径 或 file:///…/x.html"
+  "https://… , a vault note path, or file:///…/x.html": "https://… 或 库内笔记路径 或 file:///…/x.html",
+
+  // ---- 滚动方式 ----------------------------------------------------------
+  "Page scrolling": "页面滚动",
+  "What scrolls when the homepage is taller than the window: the whole page together, or each column on its own.":
+    "主页内容比窗口高时怎么滚：整页一起滚，还是左右两列各自滚。",
+  "Whole page": "整页滚动",
+  "One scrollbar for the whole page; the banner scrolls away with the content.":
+    "整页共用一条滚动条，横幅跟着内容一起往上滑走。",
+  "Each column": "分列滚动",
+  "Each column keeps its own scrollbar so the two sides can sit at different positions; the banner stays pinned at the top.":
+    "两列各有一条滚动条，左右可以停在不同位置；横幅钉在顶部不跟着动。"
 };
 
 /** 查不到就退回英文原文，宁可漏翻译也不要空白。 */

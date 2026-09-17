@@ -24,6 +24,7 @@ Evolution 是一个可配置的 Obsidian 主页插件。它以笔记本身作为
 - **待办清单**：跨配置好的笔记和文件夹统计未完成任务；勾选、编辑、新增都会写回源 Markdown
 - **就地加任务**：在待办卡片顶部输入一行按回车即写入，追加到第一个配置的任务笔记（不存在则创建）；没配任务笔记时写到今天的日记（不存在则先用模板创建）
 - **活跃笔记**：按配置的文件夹和标签过滤
+- **页面滚动两档可选**：整页滚动——全页共用一条滚动条，横幅跟着内容一起上滑；分列滚动——左右两列各滚各的、可以停在不同位置，横幅钉在顶部不动。窗口太矮或太窄时自动退回整页滚动
 - **主题预设**：作用于主页的文字、描边和各模块强调色，自动适配明暗模式
 
 ### 新任务写到哪里
@@ -147,6 +148,11 @@ Evolution 做的每件事都走 Obsidian 自己的 API，只有三处例外—�
 
 每个版本只写它相对上一版的**新增与改动**，不重复已经写过的功能；历史版本一直保留。当前全部功能见上面[功能](#功能)一节。
 
+### 1.0.8（2026-09-17）
+
+- **新增** 设置里新增「页面滚动」：可选整页滚动（横幅跟着内容一起上滑）或分列滚动（左右两列各滚各的，横幅钉在顶部）。此前只有分列滚动一种，现在两种都保留，随时可切。
+- **修复** 「字号」等下拉框不显示当前选中的值，一律停在第一项。
+
 ### 1.0.7（2026-09-17）
 
 - **新增** 中英双语整体切换：设置里「语言」选中文或英文，卡片标题、按钮提示、空状态文案和全部配置项一起切换，任一种语言下都不会混进另一种。
@@ -207,6 +213,7 @@ This is the full feature set of the **current** build, and it is not rewritten o
 - Open-task list across configured notes and folders; completing, editing, or adding a task rewrites the source Markdown
 - Add tasks in place from the dashboard: type one line and press Enter — it is appended to the first configured task note (created if missing), or to today's daily note (created if missing) when no task note is configured
 - Active-note list filtered by configurable folders and tags
+- Two page-scrolling modes: whole page — one scrollbar for everything, the banner scrolls away with the content; or per column — each column keeps its own scrollbar so the two sides can sit at different positions while the banner stays pinned at the top. Short or narrow windows fall back to whole-page scrolling automatically
 - Theme presets applied to the dashboard's text, borders, and per-module accents, with automatic light/dark adaptation
 
 ### Where new tasks go
@@ -327,6 +334,11 @@ The repository intentionally contains no personal vault paths or data. Every dat
 ## Changelog
 
 Each entry lists only what that version **added or changed** relative to the one before it; nothing already described is repeated, and older entries are kept. For the current feature set, see [Features](#features) above.
+
+### 1.0.8 (2026-09-17)
+
+- **Added** a **Page scrolling** setting: pick whole-page scrolling (the banner scrolls away with the content) or per-column scrolling (each column keeps its own scrollbar, banner stays pinned). Only per-column scrolling existed before; both are kept and can be switched at any time.
+- **Fixed** dropdowns such as **Font scale** never showed the selected value and always stopped at the first option.
 
 ### 1.0.7 (2026-09-17)
 

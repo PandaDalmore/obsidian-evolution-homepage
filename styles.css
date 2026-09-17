@@ -41,15 +41,23 @@
   margin: 0 auto;
   /* 顶部收窄：横幅尽量贴着视图上沿，两侧和底部保持呼吸感。 */
   padding: 10px 24px 24px;
-  /* 撑满整个视图高度，这样下面两列才能各自滚动，而不是整页一起滚。 */
-  height: 100%;
-  /* 万一父级没给确定高度，也不至于塌成 0。 */
-  min-height: 320px;
+  /* 高度跟着内容走，但至少铺满一屏：内容少时横幅和卡片照样占满，
+     模块配多了就自然超出，由外层视图统一出一条滚动条——整页一起上滑，横幅跟着滑走。 */
+  height: auto;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   /* 整块主页的基准字号乘这个系数；没写死字号的地方（任务、笔记、按钮）都跟着缩。 */
   font-size: calc(1em * var(--evolution-font-scale, 1));
 }
+
+/* ---- 分列滚动（设置里的另一档） -------------------------------------------
+ * 两列各自出滚动条、左右互不干扰，代价是整块主页必须锁进一屏，横幅不参与滚动。
+ * 矮窗口里列内再塞滚动条太挤，所以低于 660px 时这一档自动退回整页滚动。 */
+.evolution-homepage.is-column-scroll { height: 100%; }
+.evolution-homepage.is-column-scroll .evolution-grid,
+.evolution-homepage.is-column-scroll .evolution-split { flex: 1 1 auto; min-height: 0; }
+.evolution-homepage.is-column-scroll .evolution-column { overflow-y: auto; overflow-x: hidden; }
 
 .evolution-banner {
   position: relative;
@@ -124,14 +132,14 @@
 .evolution-banner__description[data-align="right"] { padding-right: 44px; }
 .evolution-slogan { margin: 22px 0; padding: 4px 2px; font-size: calc(1.15rem * var(--evolution-font-scale, 1)); font-weight: 600; text-align: center; color: var(--evolution-muted); }
 
-/* 高度往下传一层层都要 min-height:0，否则 flex 子项撑不进剩余空间。 */
-.evolution-grid { display: flex; flex-direction: column; gap: 18px; flex: 1 1 auto; min-height: 0; }
-.evolution-split { display: flex; align-items: stretch; gap: 18px; flex: 1 1 auto; min-height: 0; }
+/* 高度全部按内容撑开，不再锁进一屏：模块配得再多也是往下铺，不会被压缩、也不会各自内部滚。 */
+.evolution-grid { display: flex; flex-direction: column; gap: 18px; flex: 0 0 auto; }
+.evolution-split { display: flex; align-items: stretch; gap: 18px; flex: 0 0 auto; }
 /* 空列不占宽度，剩下的那列自动铺满。 */
 .evolution-column.is-empty { flex-grow: 0; min-height: 0; overflow: hidden; }
-/* 每列是自己的滚动容器：一边上下滑不影响另一边。底部留 8px 给卡片底边的拖拽横杠。
+/* 滚动交给整页：两列不再各出一条滚动条，一起跟着页面上滑。底部留 8px 给卡片底边的拖拽横杠。
    方向用 row + wrap：整行的卡片占满一行，半宽的卡片两两并排，剩下的自动换行。 */
-.evolution-column { display: flex; flex-direction: row; flex-wrap: wrap; align-items: flex-start; align-content: flex-start; gap: 18px; min-width: 0; flex: 1 1 0; min-height: 0; overflow-y: auto; overflow-x: hidden; padding-bottom: 8px; }
+.evolution-column { display: flex; flex-direction: row; flex-wrap: wrap; align-items: flex-start; align-content: flex-start; gap: 18px; min-width: 0; flex: 1 1 0; min-height: 0; overflow: visible; padding-bottom: 8px; }
 .evolution-resizer { flex: 0 0 9px; align-self: stretch; min-height: 40px; border-radius: 5px; cursor: col-resize; touch-action: none; background: var(--background-modifier-border); opacity: .35; }
 .evolution-resizer:hover, .evolution-resizer:active { opacity: .9; background: var(--interactive-accent); }
 .evolution-card-shell { position: relative; display: flex; flex-direction: column; min-width: 0; flex: 0 0 100%; }
@@ -289,10 +297,9 @@
 .evolution-open:hover { color: var(--evolution-text, var(--text-normal)); background: var(--background-modifier-hover); }
 .evolution-open svg { width: 15px; height: 15px; }
 
-/* ---- 矮窗口自适应 ----------------------------------------------------------
- * 大显示器一屏放得下；笔记本等矮窗口里两列会出现内部滚动条，内容被藏进滚动区。
- * 分两档：矮一点先压缩留白尽量塞进一屏；再矮就放弃「一屏放下」，改成整页滚动，
- * 两列完整展开，保证内容都看得见。按窗口高度自动切换，不需要任何设置。 */
+/* ---- 矮窗口留白 ------------------------------------------------------------
+ * 滚动已经统一交给整页，窗口再矮也不会把内容藏进列内部的滚动区。
+ * 这里只在矮窗口把留白收紧一点，让一屏里能多露出一些模块，不需要任何设置。 */
 @media (max-height: 860px) {
   .evolution-homepage { padding: 8px 18px 18px; }
   .evolution-slogan { margin: 10px 0; }
@@ -301,18 +308,21 @@
   .evolution-column { gap: 12px; }
   .evolution-banner__content { padding: 18px; }
 }
+/* 分列滚动在矮窗口退回整页：列里再塞一条滚动条，能看的地方就所剩无几了。 */
 @media (max-height: 660px) {
-  .evolution-homepage { height: auto; min-height: 100%; }
-  .evolution-grid,
-  .evolution-split { flex: 0 0 auto; }
-  .evolution-column { overflow: visible; }
+  .evolution-homepage.is-column-scroll { height: auto; min-height: 100%; }
+  .evolution-homepage.is-column-scroll .evolution-grid,
+  .evolution-homepage.is-column-scroll .evolution-split { flex: 0 0 auto; }
+  .evolution-homepage.is-column-scroll .evolution-column { overflow: visible; }
 }
 
 @media (max-width: 760px) {
-  .evolution-homepage { height: auto; padding: 8px 14px 14px; }
+  .evolution-homepage,
+  .evolution-homepage.is-column-scroll { height: auto; min-height: 100%; padding: 8px 14px 14px; }
   .evolution-split { flex-direction: column; }
   /* 窄屏两列是上下叠的，各自滚动反而别扭，交回给整页；半宽也一律还原成整行。 */
-  .evolution-column { flex: 0 0 auto; width: 100%; overflow: visible; }
+  .evolution-column,
+  .evolution-homepage.is-column-scroll .evolution-column { flex: 0 0 auto; width: 100%; overflow: visible; }
   .evolution-card-shell.is-half { flex: 0 0 100%; }
   .evolution-resizer { display: none; }
   .evolution-banner { min-height: 160px; }

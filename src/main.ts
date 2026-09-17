@@ -246,6 +246,8 @@ interface EvolutionSettings {
   slogan: string;
   sloganColor: string;
   leftWidth: number;
+  /** 内容比窗口高的时候怎么滚：整页一条滚动条，还是左右两列各自滚。 */
+  scrollMode: ScrollMode;
   layout: LayoutEntry[];
   diary: DiarySettings;
   shortcuts: Shortcut[];
@@ -256,6 +258,10 @@ interface EvolutionSettings {
 }
 
 /** 字号档位。默认给"小"，主页信息密度高，Obsidian 默认字号看着偏大。 */
+/** 页面滚动方式：page = 整页一条滚动条（横幅跟着上滑）；columns = 两列各自滚（横幅钉在顶部）。 */
+type ScrollMode = "page" | "columns";
+const SCROLL_MODES: ScrollMode[] = ["page", "columns"];
+
 type FontScaleId = "small" | "normal" | "large";
 const FONT_SCALES: Record<FontScaleId, number> = { small: 0.9, normal: 1, large: 1.1 };
 const FONT_SCALE_LABEL: Record<FontScaleId, string> = { small: "Small", normal: "Normal", large: "Large" };
@@ -287,6 +293,7 @@ const DEFAULT_SETTINGS: EvolutionSettings = {
   slogan: "Evolve with intention.",
   sloganColor: "",
   leftWidth: 42,
+  scrollMode: "page",
   layout: DEFAULT_LAYOUT.map((entry) => ({ ...entry })),
   diary: { enabled: true, folder: "", yearPattern: "{YYYY}年", template: "", dateFormat: "YYYY.MM.DD", statusField: "当日状态" },
   shortcuts: [],
@@ -346,6 +353,7 @@ export default class EvolutionPlugin extends Plugin {
       fontScale: FONT_SCALE_IDS.includes(saved?.fontScale as FontScaleId) ? (saved?.fontScale as FontScaleId) : DEFAULT_SETTINGS.fontScale,
       // 存档是手写在磁盘上的，越界的脏值原样用会把布局搞塌，这里统一收一次范围。
       leftWidth: clampNumber(String(saved?.leftWidth ?? DEFAULT_SETTINGS.leftWidth), MIN_LEFT_WIDTH, MAX_LEFT_WIDTH, DEFAULT_SETTINGS.leftWidth),
+      scrollMode: SCROLL_MODES.includes(saved?.scrollMode as ScrollMode) ? (saved?.scrollMode as ScrollMode) : DEFAULT_SETTINGS.scrollMode,
       diary: { ...DEFAULT_SETTINGS.diary, ...saved?.diary },
       tasks: {
         ...DEFAULT_SETTINGS.tasks,
@@ -588,6 +596,8 @@ class EvolutionView extends ItemView {
     root.empty();
     this.plugin.applyTheme(root);
     const dashboard = root.createDiv({ cls: "evolution-homepage" });
+    // 滚动方式：分列那档靠这个 class 把两列重新变成各自的滚动容器。
+    if (this.plugin.settings.scrollMode === "columns") dashboard.addClass("is-column-scroll");
     // 字号：整块主页的基准字号乘一个系数，卡片里没写死字号的地方都跟着变。
     dashboard.style.setProperty("--evolution-font-scale", String(FONT_SCALES[this.plugin.settings.fontScale]));
     this.renderBanner(dashboard);
@@ -1505,6 +1515,21 @@ class EvolutionSettingTab extends PluginSettingTab {
       await this.plugin.saveSettings();
     });
 
+    new Setting(root)
+      .setName(t("Page scrolling"))
+      .setDesc(t("What scrolls when the homepage is taller than the window: the whole page together, or each column on its own."))
+      .addDropdown((dd) => {
+        dd.addOption("page", t("Whole page"));
+        dd.addOption("columns", t("Each column"));
+        dd.setValue(this.plugin.settings.scrollMode);
+        dd.onChange(async (value) => {
+          this.plugin.settings.scrollMode = value === "columns" ? "columns" : "page";
+          await this.plugin.saveSettings();
+          // 换的是滚动容器本身，必须整页重绘才生效。
+          this.plugin.refreshOpenViews();
+        });
+      });
+
     const editor = root.createDiv({ cls: "evolution-layout-editor" });
     const rerender = (): void => {
       editor.empty();
@@ -2000,8 +2025,9 @@ function colorSetting(root: HTMLElement, name: string, desc: string, value: stri
 /** 通用下拉：选项就是 labels 的键，显示文案是它的值。 */
 function dropdownSetting<K extends string>(root: HTMLElement, name: string, desc: string, value: K, labels: Record<K, string>, update: (value: K) => Promise<void>): void {
   new Setting(root).setName(name).setDesc(desc).addDropdown((dd) => {
-    for (const key of Object.keys(labels) as K[]) dd.addOption(key, labels[key]);
     for (const key of Object.keys(labels) as K[]) dd.addOption(key, t(labels[key]));
+    // 不 setValue 的话下拉一律停在第一项，看不出当前选的是哪个。
+    dd.setValue(value);
     dd.onChange(async (next) => { await update(next as K); });
   });
 }
