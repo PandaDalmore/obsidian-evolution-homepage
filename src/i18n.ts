@@ -119,12 +119,12 @@ const ZH: Record<string, string> = {
   "File not found: {target}": "找不到文件：{target}",
 
   // ---- 主题 --------------------------------------------------------------
-  "The four palettes come from obsidian-color-boost. A theme only touches the homepage's own text, borders, and per-module accent; card backgrounds stay neutral, and the rest of your vault is untouched.":
-    "配色取自 obsidian-color-boost 的四套预设。主题只改主页自己的文字、描边和模块强调色，底色保持中性不染色；库里其它笔记界面一概不动。",
+  "A theme only touches the homepage's own text, borders, and per-module accent; card backgrounds stay neutral, and the rest of your vault is untouched.":
+    "主题只改主页自己的文字、描边和模块强调色，底色保持中性不染色；库里其它笔记界面一概不动。",
   "Following your Obsidian theme: the homepage inherits the colors of your current theme and overrides nothing.":
     "跟随 Obsidian 主题：主页沿用你当前 Obsidian 主题自身的颜色，不做任何覆盖。",
-  "Pick a preset and it applies to the homepage immediately. All four palettes come from obsidian-color-boost; lightness lifts automatically in dark mode, so nothing needs adjusting by hand.":
-    "选一套预设会立刻作用到主页。四套色值都来自 obsidian-color-boost；切到深色模式时亮度会自动提上来，不用手改。",
+  "Pick a preset and it applies to the homepage immediately; lightness lifts automatically in dark mode, so nothing needs adjusting by hand.":
+    "选一套预设会立刻作用到主页；切到深色模式时亮度会自动提上来，不用手改。",
   "Follow Obsidian theme": "跟随 Obsidian 主题",
   "🎨 Custom": "🎨 自定义",
   "The homepage follows your Obsidian theme and overrides no colors.": "主页跟着 Obsidian 主题走，不覆盖任何颜色。",

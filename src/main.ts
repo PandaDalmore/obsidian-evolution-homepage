@@ -1391,7 +1391,7 @@ class EvolutionSettingTab extends PluginSettingTab {
 
   private themeSettings(root: HTMLElement): void {
     new Setting(root).setName(t("Theme")).setHeading();
-    root.createEl("p", { text: t("The four palettes come from obsidian-color-boost. A theme only touches the homepage's own text, borders, and per-module accent; card backgrounds stay neutral, and the rest of your vault is untouched.") });
+    root.createEl("p", { text: t("A theme only touches the homepage's own text, borders, and per-module accent; card backgrounds stay neutral, and the rest of your vault is untouched.") });
 
     // 色卡 + 一张迷你卡片，选之前就能看到实际效果。用的是主页同一套 class，预览即所得。
     const preview = root.createDiv({ cls: "evolution-theme-preview" });
@@ -1449,7 +1449,7 @@ class EvolutionSettingTab extends PluginSettingTab {
 
     new Setting(root)
       .setName(t("Theme"))
-      .setDesc(t("Pick a preset and it applies to the homepage immediately. All four palettes come from obsidian-color-boost; lightness lifts automatically in dark mode, so nothing needs adjusting by hand."))
+      .setDesc(t("Pick a preset and it applies to the homepage immediately; lightness lifts automatically in dark mode, so nothing needs adjusting by hand."))
       .addDropdown((dd) => {
         dd.addOption("auto", t("Follow Obsidian theme"));
         for (const [id, preset] of Object.entries(THEME_PRESETS)) dd.addOption(id, t(preset.label));
@@ -1518,7 +1518,7 @@ class EvolutionSettingTab extends PluginSettingTab {
     const enabled = this.plugin.isModuleEnabled(entry.key);
     if (!enabled) row.addClass("is-off");
     const name = row.createDiv({ cls: "evolution-layout-editor__name" });
-    name.createSpan({ text: MODULE_LABEL[entry.key] });
+    name.createSpan({ text: t(MODULE_LABEL[entry.key]) });
     if (!enabled) name.createSpan({ cls: "evolution-layout-editor__off", text: t("Off") });
 
     const sides = row.createDiv({ cls: "evolution-layout-editor__sides" });
@@ -1534,7 +1534,7 @@ class EvolutionSettingTab extends PluginSettingTab {
     const tools = row.createDiv({ cls: "evolution-layout-editor__tools" });
     const spanButton = tools.createEl("button", {
       cls: entry.span === "half" ? "evolution-layout-editor__span is-half" : "evolution-layout-editor__span",
-      text: SPAN_LABEL[entry.span],
+      text: t(SPAN_LABEL[entry.span]),
       attr: {
         "aria-label": t("Module width"),
         title: entry.span === "half" ? t("Currently half width: two halves in the same column sit side by side; click to take the full row again.") : t("Currently full row: click to switch to half width; two halves in the same column will sit side by side.")
