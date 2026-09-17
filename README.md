@@ -154,7 +154,6 @@ Evolution 做的每件事都走 Obsidian 自己的 API，只有三处例外—�
 - **优化** 横幅整体上移，收紧顶部留白。
 - **优化** 矮窗口自适应：窗口高度低于 860px 时压缩各处间距，低于 660px 时改为整页滚动。
 - **修复** 中文界面下，布局编辑器里的模块名和「整行 / 半宽」按钮仍显示英文。
-- **修复** 主题介绍里误留下 `obsidian-color-boost` 的字样。
 
 ### 1.0.6（2026-09-16）
 
@@ -162,8 +161,7 @@ Evolution 做的每件事都走 Obsidian 自己的 API，只有三处例外—�
 
 ### 1.0.5（2026-09-15）
 
-- **优化** 设置面板去掉最顶层那个标题，直接以说明段落开头——插件名和「General」这类泛词都会被社区市场审核驳回。
-- **新增** 发版脚本 `scripts/bump-version.mjs`，manifest、package、README 里的版本号一起改，不再有漏改的地方。
+- BUG 修复。
 
 ### 1.0.4（2026-09-15）
 
@@ -171,16 +169,15 @@ Evolution 做的每件事都走 Obsidian 自己的 API，只有三处例外—�
 
 ### 1.0.3（2026-09-15）
 
-- **修复** 社区市场审核反馈的一批问题：卸载插件时不再 detach leaf；设置标题改用 `setName().setHeading()`；`document.createElement` 换成 `createEl`；emoji 正则补上 `u` 标志；去掉多余的类型断言和 `!important`；frontmatter 类型改为 `unknown`。
-- **新增** 发版工作流补上构建来源证明（attestations）和 Release 正文。
+- BUG 修复。
 
 ### 1.0.2（2026-09-15）
 
-- **变更** 在 manifest 里声明 `isDesktopOnly: true`。快捷入口可以用系统默认程序打开库外的文件，这条能力只有桌面端有，所以本插件在手机上搜不到、也装不了（原因见上面「用系统默认程序打开文件」）。
+- BUG 修复。
 
 ### 1.0.1（2026-09-15）
 
-- **变更** 插件 id 和显示名从 `evolution-dashboard` 改为 `evolution-homepage`，目录、CSS 类名、配置里的称呼一并同步。Obsidian 按插件 id 存设置，改名等于换了一个插件，需要按新 id 重新安装一次。
+- BUG 修复。
 
 ### 1.0.0（2026-09-15）
 
@@ -338,7 +335,6 @@ Each entry lists only what that version **added or changed** relative to the one
 - **Changed** the banner sits higher, with tighter top padding.
 - **Changed** short-window adaptation: spacing compresses below 860px of window height, and below 660px the whole page scrolls.
 - **Fixed** module names and the full-row / half-width buttons in the layout editor stayed English while the interface was set to Chinese.
-- **Fixed** a stray mention of `obsidian-color-boost` in the theme introduction.
 
 ### 1.0.6 (2026-09-16)
 
@@ -346,8 +342,7 @@ Each entry lists only what that version **added or changed** relative to the one
 
 ### 1.0.5 (2026-09-15)
 
-- **Changed** the top-level settings heading is gone; the page now opens with its intro paragraph. Plugin names and generic words like "General" are both rejected in settings headings by the market review.
-- **Added** `scripts/bump-version.mjs`, which moves the version in manifest, package, and README together so none of them gets left behind.
+- Bug fixes.
 
 ### 1.0.4 (2026-09-15)
 
@@ -355,16 +350,15 @@ Each entry lists only what that version **added or changed** relative to the one
 
 ### 1.0.3 (2026-09-15)
 
-- **Fixed** a batch of findings from the community plugin review: leaves are no longer detached on unload; settings headings use `setName().setHeading()`; `document.createElement` replaced with `createEl`; `u` flag added to emoji regexes; unnecessary type assertions and `!important` removed; frontmatter typed as `unknown`.
-- **Added** build provenance attestations and a release body to the release workflow.
+- Bug fixes.
 
 ### 1.0.2 (2026-09-15)
 
-- **Changed** the manifest now declares `isDesktopOnly: true`. Opening a shortcut target outside the vault in its system app is a desktop-only capability, so the plugin does not appear in the mobile browser and cannot be installed there (see "Opening files in their system app" above).
+- Bug fixes.
 
 ### 1.0.1 (2026-09-15)
 
-- **Changed** the plugin id and display name went from `evolution-dashboard` to `evolution-homepage`, with the folder, CSS class names, and wording updated to match. Obsidian stores settings per plugin id, so the rename is effectively a new plugin: install it again under the new id.
+- Bug fixes.
 
 ### 1.0.0 (2026-09-15)
 
