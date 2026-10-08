@@ -148,6 +148,10 @@ Evolution 做的每件事都走 Obsidian 自己的 API，只有三处例外—�
 
 每个版本只写它相对上一版的**新增与改动**，不重复已经写过的功能；历史版本一直保留。当前全部功能见上面[功能](#功能)一节。
 
+### 1.0.9（2026-10-08）
+
+- **修复** 待办任务文本太长时被截成一行省略号，后半截看不见。现在长任务自动换行、整段显示，超长的英文串或网址也会在中间断开；换行后复选框改为顶部对齐。
+
 ### 1.0.8（2026-09-17）
 
 - **新增** 设置里新增「页面滚动」：可选整页滚动（横幅跟着内容一起上滑）或分列滚动（左右两列各滚各的，横幅钉在顶部）。此前只有分列滚动一种，现在两种都保留，随时可切。
@@ -334,6 +338,10 @@ The repository intentionally contains no personal vault paths or data. Every dat
 ## Changelog
 
 Each entry lists only what that version **added or changed** relative to the one before it; nothing already described is repeated, and older entries are kept. For the current feature set, see [Features](#features) above.
+
+### 1.0.9 (2026-10-08)
+
+- **Fixed** long task text was clipped to a single line with an ellipsis, hiding the rest of it. Long tasks now wrap and show in full, with very long words or URLs breaking mid-word; the checkbox aligns to the first line when a task wraps.
 
 ### 1.0.8 (2026-09-17)
 

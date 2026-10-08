@@ -278,11 +278,15 @@
 /* 待办行距收紧：每行只留一点间隙，鼠标悬停时才有底色区分。 */
 .evolution-list--tasks { gap: 1px; }
 .evolution-task, .evolution-note { display: flex; align-items: flex-start; gap: 9px; padding: 9px; border-radius: 9px; }
-.evolution-list--tasks .evolution-task { align-items: center; gap: 7px; padding: 3px 6px; border-radius: 7px; }
+/* 任务文本会换行，复选框顶部对齐第一行；居中的话长任务会让复选框浮到中间。 */
+.evolution-list--tasks .evolution-task { align-items: flex-start; gap: 7px; padding: 3px 6px; border-radius: 7px; }
 .evolution-task:hover, .evolution-note:hover { background: var(--background-modifier-hover); }
 .evolution-task input { flex: none; margin: 0; accent-color: var(--ev-module-tasks, var(--interactive-accent)); }
 .evolution-task__body, .evolution-note__body { min-width: 0; flex: 1; }
-.evolution-task__title, .evolution-note__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.evolution-note__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 任务文本整段显示：长任务自动换行，超长的英文串或网址也能在中间断开，
+   不再像笔记标题那样截成一行省略号——待办的后半截往往才是要紧的部分。 */
+.evolution-task__title { white-space: normal; overflow-wrap: anywhere; word-break: break-word; line-height: 1.45; }
 .evolution-task__badges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 1px; }
 .evolution-task__badge { padding: 0 5px; border: 1px solid var(--evolution-border); border-radius: 999px; color: var(--evolution-muted); font-size: calc(.68rem * var(--evolution-font-scale, 1)); line-height: 1.6; white-space: nowrap; }
 .evolution-task__badge--priority { color: var(--ev-module-tasks, var(--interactive-accent)); border-color: var(--ev-module-tasks, var(--interactive-accent)); }
