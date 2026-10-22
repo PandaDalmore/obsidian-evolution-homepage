@@ -150,6 +150,10 @@ Evolution 做的每件事都走 Obsidian 自己的 API，只有三处例外—�
 
 每个版本只写它相对上一版的**新增与改动**，不重复已经写过的功能；历史版本一直保留。当前全部功能见上面[功能](#功能)一节。
 
+### 1.1.1（2026-10-22）
+
+- **修复** package-lock.json 与 package.json 严重脱节：根条目还停在旧插件名和 0.1.0 版本，导致 Obsidian 社区目录的自动扫描装不上依赖、源码审查不完整。已用 npm 11 重新生成 lockfile，`npm ci` 在 npm 10 与 npm 11 下均通过。
+
 ### 1.1.0（2026-10-22）
 
 - **新增** 周期任务：待办卡片顶部的「周期任务」按钮就地展开表单，可设频率（每日 / 每工作日 / 每交易日）与落笔方式（每次新增一条 / 覆盖上一条）。插件在 Obsidian 打开时和之后每小时各检查一次，按频率把任务写进任务笔记或今天的日记，并自动带上截止日期；每交易日跳过周末与休市日，中国法定节假日内置且可在设置里改。这类任务在列表里带一个频率小标签。设置里也有一份同样的列表，可以启停、改内容和删除。
@@ -347,6 +351,10 @@ The repository intentionally contains no personal vault paths or data. Every dat
 ## Changelog
 
 Each entry lists only what that version **added or changed** relative to the one before it; nothing already described is repeated, and older entries are kept. For the current feature set, see [Features](#features) above.
+
+### 1.1.1 (2026-10-22)
+
+- **Fixed** package-lock.json had drifted badly out of sync with package.json: its root entry still carried the old plugin name and version 0.1.0, which made the Obsidian community directory's automated scan fail to install dependencies and skip parts of the source review. The lockfile is regenerated with npm 11; `npm ci` now passes under both npm 10 and npm 11.
 
 ### 1.1.0 (2026-10-22)
 
