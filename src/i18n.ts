@@ -295,7 +295,49 @@ const ZH: Record<string, string> = {
     "整页共用一条滚动条，横幅跟着内容一起往上滑走。",
   "Each column": "分列滚动",
   "Each column keeps its own scrollbar so the two sides can sit at different positions; the banner stays pinned at the top.":
-    "两列各有一条滚动条，左右可以停在不同位置；横幅钉在顶部不跟着动。"
+    "两列各有一条滚动条，左右可以停在不同位置；横幅钉在顶部不跟着动。",
+
+  // ---- 周期任务 ------------------------------------------------------------
+  "Recurring tasks": "周期任务",
+  Recurring: "周期任务",
+  "Add a task that writes itself into today's daily note — every day, every weekday, or every trading day":
+    "添加一条会自己写进当天日记的任务：每天、每工作日或每交易日",
+  "Recurring task saved — it will be written into that day's daily note when it comes due.":
+    "周期任务已保存，到日子会自动写进当天日记。",
+  "Showing only the recurring-task settings. Click “Back to all settings” to see everything.":
+    "只显示周期任务的设置。点「返回全部设置」可查看所有。",
+  "Tasks that put themselves into today's daily note. The plugin checks when Obsidian opens and once an hour after that, so each due task appears once a day — nothing to remember, nothing to click.":
+    "按周期自动写进当天日记的任务。打开 Obsidian 时检查一次，之后每小时再看一次，当天该出现的每个任务只写一次，不用记也不用点。",
+  "“Add a new line” writes another entry every day and leaves older ones alone. “Replace the previous” deletes the one still open from last time first, so only the newest copy exists. Lines already ticked off are never touched — they are the record of what got done.":
+    "「每次新增一条」每天都追加新的一行，旧的留着不动。「覆盖上一条」会先删掉上次那条还没做完的，始终保持只有最新一条。已经勾掉的不会被碰，那是做过的痕迹。",
+  "No recurring tasks yet — use the button below to add one.": "还没有周期任务，点下面的按钮加一条。",
+  "+ Add recurring task": "+ 添加周期任务",
+  "How often": "生成频率",
+  "What to do with the previous one": "上一条怎么处理",
+  "Every day": "每天",
+  "Every weekday": "每工作日",
+  "Every trading day": "每交易日",
+  "Repeats daily": "每天重复",
+  "Repeats on weekdays": "每工作日重复",
+  "Repeats on trading days": "每交易日重复",
+  "Add a new line": "每次新增一条",
+  "Replace the previous": "覆盖上一条",
+  "Market holidays": "休市日",
+  "Comma-separated dates (YYYY-MM-DD) when the market is closed. Trading-day tasks skip these. Chinese public holidays are built in and editable here — official dates for a new year are usually published each November, so add them once they are out.":
+    "休市的日期，逗号分隔，格式 YYYY-MM-DD。选了「每交易日」的任务会跳过这些日子。中国法定节假日已内置，也可以在这里改——新一年的官方安排通常要到当年 11 月才发布，出来之后补进来即可。",
+  "Could not generate “{text}”: {message}": "生成「{text}」失败：{message}",
+
+  // ---- 已完成任务汇总 ------------------------------------------------------
+  "Summarize completed tasks": "汇总已完成的任务",
+  "Completed tasks": "已完成的任务",
+  "No completion date": "未记录完成日期",
+  "Nothing completed yet.": "还没有已完成的任务。",
+  "Collected {count} completed tasks, newest completion first. Running the summary again rewrites this file.":
+    "共 {count} 条，按完成日期倒序。再次汇总会整份覆盖重写本文件。",
+  "Opened the digest with {count} completed tasks.": "汇总已打开，共 {count} 条。",
+  "Could not write the digest: {message}": "汇总写入失败：{message}",
+  "Could not overwrite {path}: that note is not a digest written by this plugin. Rename it or delete it first.":
+    "{path} 已存在，而且不是本插件写的汇总，没有覆盖它。先改名或删除再试。"
 };
 
 /** 查不到就退回英文原文，宁可漏翻译也不要空白。 */

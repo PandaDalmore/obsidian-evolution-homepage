@@ -23,6 +23,8 @@ Evolution 是一个可配置的 Obsidian 主页插件。它以笔记本身作为
 - **快捷入口**：可配置笔记、文件和网页链接；主页只显示名称，路径或网址放在悬浮提示里，拖动可排序
 - **待办清单**：跨配置好的笔记和文件夹统计未完成任务；勾选、编辑、新增都会写回源 Markdown
 - **就地加任务**：在待办卡片顶部输入一行按回车即写入，追加到第一个配置的任务笔记（不存在则创建）；没配任务笔记时写到今天的日记（不存在则先用模板创建）
+- **周期任务**：在主页上就地添加，频率可选每日 / 每工作日 / 每交易日，落笔方式可选「每次新增一条」或「覆盖上一条」；插件在 Obsidian 打开时和之后每小时各检查一次，按频率把任务写进任务笔记或今天的日记，并自动带上截止日期。每交易日跳过周末和休市日，中国法定节假日已内置，休市日可在设置里改。这类任务在列表里显示频率小标签，已勾选的历史条目不会被删
+- **已完成任务汇总**：待办卡片标题栏右侧的归档按钮生成一篇「已完成的任务」笔记，按完成日期倒序分组列出全部已完成任务，每条带上源笔记链接；同名文件若不是本插件生成的，不会被覆盖
 - **活跃笔记**：按配置的文件夹和标签过滤
 - **页面滚动两档可选**：整页滚动——全页共用一条滚动条，横幅跟着内容一起上滑；分列滚动——左右两列各滚各的、可以停在不同位置，横幅钉在顶部不动。窗口太矮或太窄时自动退回整页滚动
 - **主题预设**：作用于主页的文字、描边和各模块强调色，自动适配明暗模式
@@ -148,6 +150,11 @@ Evolution 做的每件事都走 Obsidian 自己的 API，只有三处例外—�
 
 每个版本只写它相对上一版的**新增与改动**，不重复已经写过的功能；历史版本一直保留。当前全部功能见上面[功能](#功能)一节。
 
+### 1.1.0（2026-10-22）
+
+- **新增** 周期任务：待办卡片顶部的「周期任务」按钮就地展开表单，可设频率（每日 / 每工作日 / 每交易日）与落笔方式（每次新增一条 / 覆盖上一条）。插件在 Obsidian 打开时和之后每小时各检查一次，按频率把任务写进任务笔记或今天的日记，并自动带上截止日期；每交易日跳过周末与休市日，中国法定节假日内置且可在设置里改。这类任务在列表里带一个频率小标签。设置里也有一份同样的列表，可以启停、改内容和删除。
+- **新增** 已完成任务汇总：待办卡片标题栏右侧新增归档按钮，点一下生成一篇「已完成的任务」笔记，按完成日期倒序分组列出全部已完成的任务，每条带着源笔记链接；没有完成日期的单独归为一栏。同名文件若不是本插件生成的，会另起名字而不是覆盖。
+
 ### 1.0.9（2026-10-08）
 
 - **修复** 待办任务文本太长时被截成一行省略号，后半截看不见。现在长任务自动换行、整段显示，超长的英文串或网址也会在中间断开；换行后复选框改为顶部对齐。
@@ -216,6 +223,8 @@ This is the full feature set of the **current** build, and it is not rewritten o
 - Configurable note, file, and web shortcuts — the dashboard shows only the label; the path or URL stays in the tooltip and can be reordered by dragging
 - Open-task list across configured notes and folders; completing, editing, or adding a task rewrites the source Markdown
 - Add tasks in place from the dashboard: type one line and press Enter — it is appended to the first configured task note (created if missing), or to today's daily note (created if missing) when no task note is configured
+- Recurring tasks, added in place: pick how often (every day / every weekday / every trading day) and what to do with the previous entry (add a new line / replace it). The plugin checks when Obsidian opens and once an hour after that, writing the task into the task note or today's daily note with a due date derived from the frequency. Trading days skip weekends and market holidays — Chinese public holidays are built in and editable in settings. These tasks carry a small frequency badge in the list, and lines already ticked off are never deleted
+- Completed-task digest: the archive button in the Open tasks card header writes a **Completed tasks** note listing every done task, grouped by completion date, newest first, each entry linking back to its source note. A file with the same name that this plugin did not write is left alone
 - Active-note list filtered by configurable folders and tags
 - Two page-scrolling modes: whole page — one scrollbar for everything, the banner scrolls away with the content; or per column — each column keeps its own scrollbar so the two sides can sit at different positions while the banner stays pinned at the top. Short or narrow windows fall back to whole-page scrolling automatically
 - Theme presets applied to the dashboard's text, borders, and per-module accents, with automatic light/dark adaptation
@@ -338,6 +347,11 @@ The repository intentionally contains no personal vault paths or data. Every dat
 ## Changelog
 
 Each entry lists only what that version **added or changed** relative to the one before it; nothing already described is repeated, and older entries are kept. For the current feature set, see [Features](#features) above.
+
+### 1.1.0 (2026-10-22)
+
+- **Added** recurring tasks. A **Recurring** button at the top of the Open tasks card opens an inline form with a frequency (every day / every weekday / every trading day) and a write mode (add a new line / replace the previous one). The plugin checks when Obsidian opens and once an hour after that, writing the task into the task note or today's daily note with a due date derived from the frequency. Trading days skip weekends and market holidays; Chinese public holidays are built in and editable under **Market holidays** in settings. These tasks show a small frequency badge in the list, and lines already ticked off are never removed. Settings carries the same list, where entries can be toggled, edited, and deleted.
+- **Added** a completed-task digest. An archive button in the Open tasks card header writes a **Completed tasks** note listing every done task grouped by completion date, newest group first, each entry linking back to its source note; tasks with no completion date fall into their own group. If a file of that name exists and this plugin did not write it, a new name is picked rather than overwriting it.
 
 ### 1.0.9 (2026-10-08)
 

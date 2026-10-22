@@ -14,7 +14,7 @@ import { LANG_IDS, LANG_LABEL, monthLabel, setLang, t, weekdays, type Lang } fro
 
 const VIEW_TYPE_EVOLUTION = "evolution-homepage-view";
 
-type SettingsFocus = "theme" | "banner" | "diary" | "tasks" | "projects" | "shortcuts" | null;
+type SettingsFocus = "theme" | "banner" | "diary" | "tasks" | "recurring" | "projects" | "shortcuts" | null;
 
 /** 四个可以上色的模块，和主页上的卡片一一对应 */
 type ModuleKey = "diary" | "shortcuts" | "tasks" | "projects";
@@ -159,6 +159,49 @@ const MIN_CARD_HEIGHT = 120;
 /** 左列宽度占比的上下限：越小左列越窄，右列相应变宽。 */
 const MIN_LEFT_WIDTH = 20;
 const MAX_LEFT_WIDTH = 80;
+/** 已完成任务汇总写到库根哪个文件；再次点入口会整份覆盖重生成。 */
+const DONE_DIGEST_PATH = "已完成的任务.md";
+/** 汇总文件头部的暗标记：重生成时靠它认出这是自己写过、可以覆盖的文件。 */
+const DIGEST_MARK = "<!-- evolution-homepage completed digest -->";
+
+/** 一条新周期任务的短 id，只用来在笔记里认出自己写的那些行，够短够随机即可。 */
+function newRecurringId(): string { return Math.random().toString(36).slice(2, 8); }
+
+function normalizeRecurringTask(value: unknown): RecurringTask | null {
+  const item = value as Partial<RecurringTask> | null | undefined;
+  if (!item || typeof item.text !== "string" || !item.text.trim()) return null;
+  return {
+    id: typeof item.id === "string" && item.id.trim() ? item.id.trim() : newRecurringId(),
+    text: item.text.trim(),
+    frequency: RECURRING_FREQUENCIES.includes(item.frequency as RecurringFrequency) ? (item.frequency as RecurringFrequency) : "daily",
+    mode: item.mode === "replace" ? "replace" : "append",
+    enabled: item.enabled !== false,
+    lastRun: typeof item.lastRun === "string" ? item.lastRun : ""
+  };
+}
+
+/** 周期任务整块：任务逐条校验，休市日只留合规日期，没配过就用内置的 2026 年表。 */
+function normalizeRecurring(value: unknown): RecurringSettings {
+  const raw = value as Partial<RecurringSettings> | null | undefined;
+  const tasks = Array.isArray(raw?.tasks)
+    ? (raw?.tasks ?? []).map(normalizeRecurringTask).filter((item): item is RecurringTask => item !== null)
+    : [];
+  const saved = Array.isArray(raw?.marketHolidays) ? raw?.marketHolidays ?? [] : null;
+  const holidays = saved
+    ? [...new Set(saved.filter((item): item is string => typeof item === "string" && /^\d{4}-\d{2}-\d{2}$/.test(item)))]
+    : [...MARKET_HOLIDAYS_2026];
+  return { tasks, marketHolidays: holidays };
+}
+
+/** 这一天该不该生成：daily 天天；weekday 周一至周五；trading 工作日且不在休市日里。 */
+function recurringDue(frequency: RecurringFrequency, date: Date, holidays: string[]): boolean {
+  if (frequency === "daily") return true;
+  const weekday = date.getDay();
+  if (weekday === 0 || weekday === 6) return false;
+  if (frequency === "weekday") return true;
+  const iso = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return !holidays.includes(iso);
+}
 
 /** 老版本的设置里没有 layout，补一份默认的；缺哪个模块补哪个，多的丢掉。 */
 function normalizeLayout(value: unknown): LayoutEntry[] {
@@ -228,6 +271,8 @@ interface TaskItem {
   repeat: string;
   scheduled: string;
   start: string;
+  /** 行尾 🆔 evo<id> 里的 id；非空说明这一条是本插件的周期任务生成的。 */
+  recurringId: string;
 }
 
 const PRIORITY_ORDER: TaskPriority[] = ["highest", "high", "medium", "low"];
@@ -255,12 +300,61 @@ interface EvolutionSettings {
   projects: ProjectSettings;
   /** 开库时是否自动打开 Evolution 主页；已有主页视图则不重复打开。 */
   openOnStartup: boolean;
+  /** 按周期自动生成的任务：每天 / 每工作日 / 每交易日往日记里补一条。 */
+  recurring: RecurringSettings;
 }
 
 /** 字号档位。默认给"小"，主页信息密度高，Obsidian 默认字号看着偏大。 */
 /** 页面滚动方式：page = 整页一条滚动条（横幅跟着上滑）；columns = 两列各自滚（横幅钉在顶部）。 */
 type ScrollMode = "page" | "columns";
 const SCROLL_MODES: ScrollMode[] = ["page", "columns"];
+
+/** 周期任务多久生成一次：每天 / 每工作日（周一到周五）/ 每交易日（工作日再去掉休市日）。 */
+type RecurringFrequency = "daily" | "weekday" | "trading";
+/** 生成方式：append 每次在日记里另起一条；replace 先顶掉上一次那条还没做完的，始终只留一条。 */
+type RecurringMode = "append" | "replace";
+const RECURRING_FREQUENCIES: RecurringFrequency[] = ["daily", "weekday", "trading"];
+const FREQUENCY_LABEL: Record<RecurringFrequency, string> = { daily: "Every day", weekday: "Every weekday", trading: "Every trading day" };
+/** 同一件事在主页列表里那一枚小标签上的写法：跟设置里的下拉分开，标签要更短更口语。 */
+const FREQUENCY_BADGE: Record<RecurringFrequency, string> = { daily: "Repeats daily", weekday: "Repeats on weekdays", trading: "Repeats on trading days" };
+const MODE_LABEL: Record<RecurringMode, string> = { append: "Add a new line", replace: "Replace the previous" };
+
+interface RecurringTask {
+  id: string;
+  text: string;
+  frequency: RecurringFrequency;
+  mode: RecurringMode;
+  enabled: boolean;
+  /** 上次生成的日期（YYYY-MM-DD）。同一天不会生成第二次，隔天才会再补。 */
+  lastRun: string;
+}
+
+interface RecurringSettings {
+  tasks: RecurringTask[];
+  /** 休市日，YYYY-MM-DD。交易日 = 周一至周五且不在其中；内置 2026 年法定节假日，之后的年份在这里补。 */
+  marketHolidays: string[];
+}
+
+/**
+ * 周期任务写进笔记时带的暗号，用 Tasks 也认的 🆔，主页解析时会把它丢掉不显示。
+ * 前缀必须是纯字母数字：解析 🆔 的正则是 [A-Za-z0-9]+，带连字符会被截断，
+ * 剩下的半截 id 会留在任务标题里。
+ */
+const RECUR_ID_PREFIX = "evo";
+/**
+ * 2026 年法定节假日里落在工作日的部分（国办发明电〔2025〕7号）。
+ * 只列周一到周五那些——周末本来就不开市，不用记。
+ * 2027 年的安排国务院要到 2026 年 11 月才发布，届时在设置里的「休市日」补上即可。
+ */
+const MARKET_HOLIDAYS_2026 = [
+  "2026-01-01", "2026-01-02",
+  "2026-02-16", "2026-02-17", "2026-02-18", "2026-02-19", "2026-02-20", "2026-02-23",
+  "2026-04-06",
+  "2026-05-01", "2026-05-04", "2026-05-05",
+  "2026-06-19",
+  "2026-09-25",
+  "2026-10-01", "2026-10-02", "2026-10-05", "2026-10-06", "2026-10-07"
+];
 
 type FontScaleId = "small" | "normal" | "large";
 const FONT_SCALES: Record<FontScaleId, number> = { small: 0.9, normal: 1, large: 1.1 };
@@ -294,6 +388,7 @@ const DEFAULT_SETTINGS: EvolutionSettings = {
   sloganColor: "",
   leftWidth: 42,
   scrollMode: "page",
+  recurring: { tasks: [], marketHolidays: [...MARKET_HOLIDAYS_2026] },
   layout: DEFAULT_LAYOUT.map((entry) => ({ ...entry })),
   diary: { enabled: true, folder: "", yearPattern: "{YYYY}年", template: "", dateFormat: "YYYY.MM.DD", statusField: "当日状态" },
   shortcuts: [],
@@ -332,7 +427,10 @@ export default class EvolutionPlugin extends Plugin {
       if (this.settings.openOnStartup && this.app.workspace.getLeavesOfType(VIEW_TYPE_EVOLUTION).length === 0) {
         void this.openDashboard();
       }
+      void this.runRecurringTasks();
     });
+    // 每小时再看一眼：Obsidian 连着开几天不关，跨过零点后也能把当天那次补上。
+    this.registerInterval(window.setInterval(() => void this.runRecurringTasks(), 60 * 60 * 1000));
   }
 
   // 官方规范：不要在 onunload 里 detach leaves，否则插件重载时用户摆好的布局会被重置。
@@ -354,6 +452,7 @@ export default class EvolutionPlugin extends Plugin {
       // 存档是手写在磁盘上的，越界的脏值原样用会把布局搞塌，这里统一收一次范围。
       leftWidth: clampNumber(String(saved?.leftWidth ?? DEFAULT_SETTINGS.leftWidth), MIN_LEFT_WIDTH, MAX_LEFT_WIDTH, DEFAULT_SETTINGS.leftWidth),
       scrollMode: SCROLL_MODES.includes(saved?.scrollMode as ScrollMode) ? (saved?.scrollMode as ScrollMode) : DEFAULT_SETTINGS.scrollMode,
+      recurring: normalizeRecurring(saved?.recurring),
       diary: { ...DEFAULT_SETTINGS.diary, ...saved?.diary },
       tasks: {
         ...DEFAULT_SETTINGS.tasks,
@@ -373,6 +472,87 @@ export default class EvolutionPlugin extends Plugin {
     };
     setLang(this.settings.language);
     this.syncChromeLabel();
+  }
+
+  /** 防止两个检查撞在一起重复写同一条任务。 */
+  private recurringRunning = false;
+
+
+  /**
+   * 把当天该生成的周期任务补进日记。打开 Obsidian 时跑一次，之后每小时再看一眼，
+   * 所以连着开好几天也不会漏掉跨天那次。同一天只生成一次——生成完就把 lastRun 记成今天。
+   */
+  async runRecurringTasks(): Promise<void> {
+    if (this.recurringRunning) return;
+    const tasks = this.settings.recurring.tasks;
+    if (!tasks.length) return;
+    this.recurringRunning = true;
+    try {
+      const today = todayIso();
+      const now = new Date();
+      const holidays = this.settings.recurring.marketHolidays;
+      let changed = false;
+      for (const task of tasks) {
+        // 空文本不写：设置里刚点「添加」时那条还没填内容。
+        if (!task.enabled || !task.text.trim() || task.lastRun === today) continue;
+        if (!recurringDue(task.frequency, now, holidays)) continue;
+        try {
+          await this.materializeRecurring(task);
+          task.lastRun = today;
+          changed = true;
+        } catch (error) {
+          new Notice(t("Could not generate “{text}”: {message}", { text: task.text, message: error instanceof Error ? error.message : String(error) }));
+        }
+      }
+      if (changed) await this.saveSettings();
+    } finally {
+      this.recurringRunning = false;
+    }
+  }
+
+  /** 往今天的日记写一条；覆盖模式先把上一条还没做完的顶掉，日记不存在就按模板新建。 */
+  private async materializeRecurring(task: RecurringTask): Promise<void> {
+    const marker = `🆔 ${RECUR_ID_PREFIX}${task.id}`;
+    if (task.mode === "replace") await this.dropRecurringLines(marker);
+    const file = await ensureDiaryFor(this.app, this.settings, new Date());
+    await appendLineTo(this.app, file, `- [ ] ${task.text} ${marker}`);
+  }
+
+  /** 删掉所有「带着这个暗号、且还没做完」的行。已经做完的历史留着，那是痕迹不是垃圾。 */
+  private async dropRecurringLines(marker: string): Promise<void> {
+    for (const file of this.recurringScanFiles()) {
+      let content = "";
+      try { content = await this.app.vault.cachedRead(file); } catch { continue; }
+      if (!content.includes(marker)) continue;
+      const lines = content.split(/\r?\n/);
+      const kept = lines.filter((line) => !(line.includes(marker) && /^\s*(?:[-*+]|\d+[.)])\s+\[ ]/.test(line)));
+      if (kept.length === lines.length) continue;
+      await this.app.vault.modify(file, kept.join(detectNewline(content)));
+    }
+  }
+
+  /** 覆盖模式扫哪些笔记：最近 60 天的日记，外加设置里配的待办来源（清单也可能放在固定笔记里）。 */
+  private recurringScanFiles(): TFile[] {
+    const seen = new Set<string>();
+    const out: TFile[] = [];
+    const push = (file: TFile | null): void => {
+      if (!(file instanceof TFile) || seen.has(file.path)) return;
+      seen.add(file.path);
+      out.push(file);
+    };
+    const base = new Date();
+    for (let back = 0; back < 60; back += 1) {
+      const date = new Date(base.getFullYear(), base.getMonth(), base.getDate() - back);
+      push(this.app.vault.getAbstractFileByPath(diaryPathFor(this.app, this.settings, date)) as TFile | null);
+    }
+    const folderPaths = this.settings.tasks.folders.map(normalizePath).filter(Boolean);
+    const filePaths = new Set(this.settings.tasks.files.map(normalizePath).filter(Boolean));
+    if (folderPaths.length || filePaths.size) {
+      for (const file of this.app.vault.getMarkdownFiles()) {
+        if (filePaths.has(file.path) || folderPaths.some((folder) => file.path.startsWith(`${folder}/`))) push(file);
+      }
+    }
+    return out;
   }
 
   /** 勾选完成时写不写 ✅ 完成日期。主页自己也认这个符号，所以不装 Tasks 一样有意义。 */
@@ -555,6 +735,8 @@ class EvolutionView extends ItemView {
   private diaryMonth = new Date();
   /** 待办卡片顶部的输入框是否展开；重绘后要按这个状态恢复并重新聚焦。 */
   private taskComposerOpen = false;
+  /** 周期任务那张行内表单是否展开。跟上面那个互斥：同一时刻只展开一张。 */
+  private recurringComposerOpen = false;
   /** 输入框里没保存的内容，重绘时原样放回去，避免被外部刷新打断。 */
   private draft: TaskDraft = { ...EMPTY_DRAFT };
   /** 正在编辑的那条任务（文件路径 + 行号）；null 表示没有在编辑。 */
@@ -677,7 +859,7 @@ class EvolutionView extends ItemView {
 
   /** 重绘会把输入框整个换掉，所以每次都要把光标放回原处。 */
   private focusTaskComposer(): void {
-    const scope = this.taskComposerOpen ? ".evolution-task-add " : "";
+    const scope = this.taskComposerOpen || this.recurringComposerOpen ? ".evolution-task-add " : "";
     const input = this.contentEl.querySelector<HTMLInputElement>(`${scope}.evolution-task-edit__input`);
     if (!input) return;
     input.focus();
@@ -928,37 +1110,11 @@ class EvolutionView extends ItemView {
     }
   }
 
-  private diaryPath(date: Date): string {
-    const settings = this.plugin.settings.diary;
-    const folder = this.diaryFolder(date);
-    const name = formatDate(date, settings.dateFormat.trim() || this.coreOption("format") || "YYYY.MM.DD");
-    return normalizePath(folder ? `${folder}/${name}.md` : `${name}.md`);
-  }
-
-  private diaryFolder(date: Date): string {
-    const settings = this.plugin.settings.diary;
-    const base = formatPath(settings.folder.trim() || this.coreFolder(), date);
-    const year = formatPath(settings.yearPattern, date);
-    return [base, year].map((part) => part.replace(/^\/+|\/+$/g, "")).filter(Boolean).join("/");
-  }
-
-  private coreFolder(): string {
-    // The core daily-notes plugin stores a folder that already ends in the
-    // current year, so drop that segment and let yearPattern rebuild it.
-    return String(this.coreOption("folder") ?? "").replace(/\/\d{4}(年)?$/, "");
-  }
-
-  private coreOption(key: string): string | null {
-    const host = this.app as App & {
-      internalPlugins?: {
-        getPluginById: (id: string) => { enabled?: boolean; instance?: { options?: Record<string, unknown> } } | null;
-      };
-    };
-    const plugin = host.internalPlugins?.getPluginById("daily-notes");
-    if (!plugin?.enabled) return null;
-    const value = plugin.instance?.options?.[key];
-    return typeof value === "string" && value.trim() ? value : null;
-  }
+  /** 下面几个都只是转调模块级函数：周期任务要在视图没打开时也能用同一套定位。 */
+  private diaryPath(date: Date): string { return diaryPathFor(this.app, this.plugin.settings, date); }
+  private diaryFolder(date: Date): string { return diaryFolderFor(this.app, this.plugin.settings, date); }
+  private coreFolder(): string { return coreDailyFolder(this.app); }
+  private coreOption(key: string): string | null { return coreDailyOption(this.app, key); }
 
   private async openOrCreateDiary(path: string, date: Date): Promise<void> {
     const current = this.app.vault.getAbstractFileByPath(path);
@@ -974,20 +1130,7 @@ class EvolutionView extends ItemView {
     }
   }
 
-  /** 拿到某一天的日记：有就直接返回，没有就按模板新建一份（不打开）。 */
-  private async ensureDiaryFile(date: Date): Promise<TFile> {
-    const path = this.diaryPath(date);
-    const existing = this.app.vault.getAbstractFileByPath(path);
-    if (existing instanceof TFile) return existing;
-    const folder = path.includes("/") ? path.substring(0, path.lastIndexOf("/")) : "";
-    if (folder) await ensureFolder(this.app, folder);
-    const templatePath = this.plugin.settings.diary.template.trim() || this.coreOption("template") || "";
-    const template = templatePath ? this.app.vault.getAbstractFileByPath(normalizePath(templatePath)) : null;
-    const content = template instanceof TFile
-      ? applyDateTemplate(await this.app.vault.read(template), date)
-      : `# ${formatDate(date, this.plugin.settings.diary.dateFormat.trim() || "YYYY.MM.DD")}\n`;
-    return await this.app.vault.create(path, content);
-  }
+  private async ensureDiaryFile(date: Date): Promise<TFile> { return await ensureDiaryFor(this.app, this.plugin.settings, date); }
 
   private renderShortcuts(root: HTMLElement): void {
     const card = this.makeCard(root, t(MODULE_LABEL.shortcuts), "shortcuts");
@@ -1063,14 +1206,9 @@ class EvolutionView extends ItemView {
 
   private async renderTasks(root: HTMLElement): Promise<void> {
     const card = this.makeCard(root, t(MODULE_LABEL.tasks), "tasks");
+    const files = this.taskFiles();
+    this.renderDigestButton(card, files);
     this.renderTaskComposer(card);
-    const files = this.filesFor(this.plugin.settings.tasks.folders, this.plugin.settings.tasks.files);
-    // 新任务会落到当日日记时，列表也要把当日日记扫一遍，否则刚加的任务看不见。
-    const diaryPath = this.diaryPath(new Date());
-    if (!this.configuredTaskFile() && !files.some((file) => file.path === diaryPath)) {
-      const diary = this.app.vault.getAbstractFileByPath(diaryPath);
-      if (diary instanceof TFile) files.push(diary);
-    }
     if (!files.length) { card.createEl("p", { cls: "evolution-empty", text: t("No task source configured yet; tasks you add above go into today's daily note.") }); return; }
     // 来源目录常常上千篇，先把没有待办项的笔记筛掉再读全文。
     const sources = files.filter((file) => this.mayHaveOpenTasks(file));
@@ -1107,10 +1245,110 @@ class EvolutionView extends ItemView {
     }
   }
 
+  /** 待办的数据来源：配置好的文件夹和笔记，外加当日日记——没配任务笔记时新任务会落到日记里。 */
+  private taskFiles(): TFile[] {
+    const files = this.filesFor(this.plugin.settings.tasks.folders, this.plugin.settings.tasks.files);
+    const diaryPath = this.diaryPath(new Date());
+    if (!this.configuredTaskFile() && !files.some((file) => file.path === diaryPath)) {
+      const diary = this.app.vault.getAbstractFileByPath(diaryPath);
+      if (diary instanceof TFile) files.push(diary);
+    }
+    return files;
+  }
+
+  /** 卡片标题栏那颗按钮：把全部已完成的任务汇总成一份笔记并打开。 */
+  private renderDigestButton(card: HTMLElement, files: TFile[]): void {
+    const header = card.querySelector(".evolution-card__header");
+    if (!header) return;
+    const label = t("Summarize completed tasks");
+    const button = header.createEl("button", { cls: "evolution-icon-button", attr: { "aria-label": label, title: label } });
+    setIcon(button, "archive");
+    button.addEventListener("click", () => void this.writeDoneDigest(files));
+    // 插到齿轮左边：新建时排在最后，querySelector 取到的第一个就是齿轮。
+    const gear = header.querySelector(".evolution-icon-button");
+    if (gear) header.insertBefore(button, gear);
+  }
+
+  /** 汇总全部已完成的任务写进库根那份笔记，再在新标签页打开；再点一次就是整份重生成覆盖。 */
+  private async writeDoneDigest(files: TFile[]): Promise<void> {
+    try {
+      // 汇总文件自己不能算进去，否则下一轮会带上上一轮的自己，越滚越多。
+      const sources = files.filter((file) => file.path !== DONE_DIGEST_PATH).filter((file) => this.mayHaveDoneTasks(file));
+      const tasks = (await Promise.all(sources.map((file) => this.doneTasksInFile(file)))).flat();
+      const lines: string[] = [`# ${t("Completed tasks")}`, ""];
+      if (!tasks.length) {
+        lines.push(t("Nothing completed yet."), "");
+      } else {
+        lines.push(t("Collected {count} completed tasks, newest completion first. Running the summary again rewrites this file.", { count: tasks.length }), "");
+        // 有 ✅ 日期的按日期倒序分组；没写完成日期的归到最后一栏。
+        const dated = tasks.filter((task) => task.done).sort((a, b) => b.done.localeCompare(a.done));
+        const groups = new Map<string, TaskItem[]>();
+        for (const task of dated) {
+          const bucket = groups.get(task.done) ?? [];
+          bucket.push(task);
+          groups.set(task.done, bucket);
+        }
+        for (const [date, bucket] of groups) {
+          lines.push(`## ${date}`, "");
+          for (const task of bucket) lines.push(`- ${task.text} — [[${task.file.basename}]]`);
+          lines.push("");
+        }
+        const undated = tasks.filter((task) => !task.done);
+        if (undated.length) {
+          lines.push(`## ${t("No completion date")}`, "");
+          for (const task of undated) lines.push(`- ${task.text} — [[${task.file.basename}]]`);
+          lines.push("");
+        }
+      }
+      const content = `${DIGEST_MARK}\n${lines.join("\n")}`;
+      const existing = this.app.vault.getAbstractFileByPath(DONE_DIGEST_PATH);
+      if (existing instanceof TFile) {
+        // 库根可能早就有同名笔记；不是本插件写的就不动它，宁可报错也不能毁掉别人的内容。
+        const previous = await this.app.vault.read(existing);
+        if (previous.trim() !== "" && !previous.includes(DIGEST_MARK)) {
+          new Notice(t("Could not overwrite {path}: that note is not a digest written by this plugin. Rename it or delete it first.", { path: DONE_DIGEST_PATH }));
+          return;
+        }
+        await this.app.vault.modify(existing, content);
+      } else {
+        await this.app.vault.create(DONE_DIGEST_PATH, content);
+      }
+      const written = this.app.vault.getAbstractFileByPath(DONE_DIGEST_PATH);
+      if (written instanceof TFile) await this.app.workspace.getLeaf("tab").openFile(written);
+      new Notice(t("Opened the digest with {count} completed tasks.", { count: tasks.length }));
+    } catch (error) {
+      new Notice(t("Could not write the digest: {message}", { message: error instanceof Error ? error.message : String(error) }));
+    }
+  }
+
+  /** 跟 mayHaveOpenTasks 一样先用 metadataCache 过一遍，省得把上千篇笔记全文读一遍；这里挑的是已勾选的行。 */
+  private mayHaveDoneTasks(file: TFile): boolean {
+    if (Date.now() - file.stat.mtime < 5000) return true;
+    const cache = this.app.metadataCache.getFileCache(file);
+    if (!cache) return true;
+    return (cache.listItems ?? []).some((item) => item.task !== undefined && item.task.trim() !== "");
+  }
+
+  /** 扫一篇笔记里所有已勾选的任务行。解析跟未完成的共用一套，只是方括号里是 x 而不是空格。 */
+  private async doneTasksInFile(file: TFile): Promise<TaskItem[]> {
+    const content = await this.app.vault.read(file);
+    return content.split(/\r?\n/).flatMap((line, index) => {
+      const match = line.match(/^\s*(?:[-*+]\s+)\[[xX]\]\s+(.+)$/);
+      return match ? [{ file, line: index, ...parseTaskLine(match[1]) }] : [];
+    });
+  }
+
   /** 截止时间和优先级做成小徽章，不再把原始表情符号堆在正文里。 */
   private renderTaskBadges(body: HTMLElement, task: TaskItem): void {
-    if (!task.due && !task.priority && !task.done && !task.repeat && !task.scheduled && !task.start) return;
+    // 这一条是不是周期任务自动生成的：拿行里的 id 去设置里对，对不上（比如配置已经被删了）就不显示。
+    const recurring = task.recurringId
+      ? this.plugin.settings.recurring.tasks.find((item) => item.id === task.recurringId)
+      : undefined;
+    if (!task.due && !task.priority && !task.done && !task.repeat && !task.scheduled && !task.start && !recurring) return;
     const row = body.createDiv({ cls: "evolution-task__badges" });
+    if (recurring) {
+      row.createSpan({ cls: "evolution-task__badge evolution-task__badge--recurring", text: t(FREQUENCY_BADGE[recurring.frequency]) });
+    }
     if (task.priority) {
       row.createSpan({ cls: "evolution-task__badge evolution-task__badge--priority", text: t(PRIORITY_LABEL[task.priority]) });
     }
@@ -1148,18 +1386,80 @@ class EvolutionView extends ItemView {
     });
   }
 
+  /**
+   * 周期任务的行内表单：内容 + 频率 + 上一条怎么处理，回车即存。
+   * 存完当场补生成一次，今天符合频率的话立刻就能在下面看到那一条。
+   */
+  private renderRecurringFields(container: HTMLElement): void {
+    const form = container.createDiv({ cls: "evolution-task-edit evolution-task-edit--recurring" });
+    const input = form.createEl("input", { type: "text", cls: "evolution-task-edit__input", attr: { placeholder: t("Task text"), "aria-label": t("Task text") } });
+    const frequency = form.createEl("select", { cls: "evolution-task-edit__select", attr: { "aria-label": t("How often") } });
+    for (const key of RECURRING_FREQUENCIES) frequency.createEl("option", { value: key, text: t(FREQUENCY_LABEL[key]) });
+    const mode = form.createEl("select", { cls: "evolution-task-edit__select", attr: { "aria-label": t("What to do with the previous one") } });
+    for (const key of ["append", "replace"] as RecurringMode[]) mode.createEl("option", { value: key, text: t(MODE_LABEL[key]) });
+
+    const close = (): void => {
+      this.recurringComposerOpen = false;
+      void this.refresh();
+    };
+    const save = (): void => {
+      const text = input.value.trim();
+      if (!text) { close(); return; }
+      this.plugin.settings.recurring.tasks.push({
+        id: newRecurringId(),
+        text,
+        frequency: frequency.value as RecurringFrequency,
+        mode: mode.value as RecurringMode,
+        enabled: true,
+        lastRun: ""
+      });
+      void this.plugin.saveSettings().then(async () => {
+        await this.plugin.runRecurringTasks();
+        close();
+        new Notice(t("Recurring task saved — it will be written into that day's daily note when it comes due."));
+      });
+    };
+
+    const confirm = form.createEl("button", { cls: "evolution-task-add__confirm", attr: { "aria-label": t("Save task"), title: t("Save (Enter)") } });
+    setIcon(confirm, "check");
+    const cancel = form.createEl("button", { cls: "evolution-icon-button", attr: { "aria-label": t("Cancel"), title: t("Cancel (Esc)") } });
+    setIcon(cancel, "x");
+    confirm.addEventListener("click", save);
+    cancel.addEventListener("click", close);
+    form.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") { event.preventDefault(); save(); }
+      else if (event.key === "Escape") { event.preventDefault(); close(); }
+    });
+  }
+
   /** 卡片顶部的「添加任务」：收起时是一行按钮，点开就地输入，回车即写进笔记。 */
   private renderTaskComposer(card: HTMLElement): void {
     const bar = card.createDiv({ cls: "evolution-task-add" });
     const hint = this.taskTargetHint();
 
+    if (this.recurringComposerOpen) {
+      this.renderRecurringFields(bar);
+      return;
+    }
+
     if (!this.taskComposerOpen) {
-      const trigger = bar.createEl("button", { cls: "evolution-task-add__trigger", attr: { title: hint } });
+      const pair = bar.createDiv({ cls: "evolution-task-add__pair" });
+      const trigger = pair.createEl("button", { cls: "evolution-task-add__trigger", attr: { title: hint } });
       const icon = trigger.createSpan({ cls: "evolution-task-add__icon", attr: { "aria-hidden": "true" } });
       setIcon(icon, "plus");
       trigger.createSpan({ text: t("Add task") });
       trigger.addEventListener("click", () => {
         this.taskComposerOpen = true;
+        void this.refresh();
+      });
+
+      const recurring = pair.createEl("button", { cls: "evolution-task-add__trigger", attr: { title: t("Add a task that writes itself into today's daily note — every day, every weekday, or every trading day") } });
+      const repeatIcon = recurring.createSpan({ cls: "evolution-task-add__icon", attr: { "aria-hidden": "true" } });
+      setIcon(repeatIcon, "repeat");
+      recurring.createSpan({ text: t("Recurring") });
+      recurring.addEventListener("click", () => {
+        this.recurringComposerOpen = true;
+        this.taskComposerOpen = false;
         void this.refresh();
       });
       return;
@@ -1286,13 +1586,7 @@ class EvolutionView extends ItemView {
   }
 
   /** 往笔记末尾追加一行，顺便保证结尾只有一个换行。 */
-  private async appendLine(file: TFile, line: string): Promise<void> {
-    await this.app.vault.process(file, (content) => {
-      const newline = detectNewline(content);
-      const body = content.replace(/\s+$/, "");
-      return body ? `${body}${newline}${line}${newline}` : `${line}${newline}`;
-    });
-  }
+  private async appendLine(file: TFile, line: string): Promise<void> { await appendLineTo(this.app, file, line); }
 
   private async completeTask(file: TFile, line: number, original: string): Promise<void> {
     try {
@@ -1383,6 +1677,7 @@ class EvolutionSettingTab extends PluginSettingTab {
     this.bannerSettings(containerEl);
     this.diarySettings(containerEl);
     this.taskSettings(containerEl);
+    this.recurringSettings(containerEl);
     this.projectSettings(containerEl);
     this.shortcutSettings(containerEl);
   }
@@ -1390,11 +1685,13 @@ class EvolutionSettingTab extends PluginSettingTab {
   private renderFocused(focus: SettingsFocus): void {
     const back = this.containerEl.createEl("button", { cls: "evolution-settings__back", text: t("← Back to all settings") });
     back.addEventListener("click", () => this.display());
-    this.containerEl.createEl("p", { cls: "evolution-settings__back-hint", text: t("Showing only this module's settings. Click “Back to all settings” to see everything.") });
+    // 周期任务不是某个模块，提示文案换个说法，别写成「这个模块」。
+    this.containerEl.createEl("p", { cls: "evolution-settings__back-hint", text: focus === "recurring" ? t("Showing only the recurring-task settings. Click “Back to all settings” to see everything.") : t("Showing only this module's settings. Click “Back to all settings” to see everything.") });
     if (focus === "theme") this.themeSettings(this.containerEl);
     else if (focus === "banner") this.bannerSettings(this.containerEl);
     else if (focus === "diary") this.diarySettings(this.containerEl);
     else if (focus === "tasks") this.taskSettings(this.containerEl);
+    else if (focus === "recurring") this.recurringSettings(this.containerEl);
     else if (focus === "projects") this.projectSettings(this.containerEl);
     else if (focus === "shortcuts") this.shortcutSettings(this.containerEl);
   }
@@ -1620,6 +1917,63 @@ class EvolutionSettingTab extends PluginSettingTab {
       });
     textSetting(root, t("Task folders"), t("Comma-separated folders. Tasks in every descendant note are included."), this.plugin.settings.tasks.folders.join(", "), async (value) => { this.plugin.settings.tasks.folders = splitPaths(value); await this.plugin.saveSettings(); });
     textSetting(root, t("Task notes"), t("Comma-separated paths of individual task notes. New tasks go into the first note listed here (created if missing). Leave the whole field empty and new tasks land in today's daily note, creating it if needed."), this.plugin.settings.tasks.files.join(", "), async (value) => { this.plugin.settings.tasks.files = splitPaths(value); await this.plugin.saveSettings(); });
+  }
+
+  private recurringSettings(root: HTMLElement): void {
+    new Setting(root).setName(t("Recurring tasks")).setHeading();
+    root.createEl("p", { cls: "evolution-settings__note", text: t("Tasks that put themselves into today's daily note. The plugin checks when Obsidian opens and once an hour after that, so each due task appears once a day — nothing to remember, nothing to click.") });
+    root.createEl("p", { cls: "evolution-settings__note", text: t("“Add a new line” writes another entry every day and leaves older ones alone. “Replace the previous” deletes the one still open from last time first, so only the newest copy exists. Lines already ticked off are never touched — they are the record of what got done.") });
+
+    const editor = root.createDiv({ cls: "evolution-recurring-editor" });
+    const rerender = (): void => {
+      editor.empty();
+      const list = this.plugin.settings.recurring.tasks;
+      if (!list.length) editor.createEl("p", { cls: "evolution-empty", text: t("No recurring tasks yet — use the button below to add one.") });
+      // 改完立刻补一次：当天该生成的马上就写进日记，不用等下一个整点。
+      const commit = async (): Promise<void> => {
+        await this.plugin.saveSettings();
+        await this.plugin.runRecurringTasks();
+      };
+      list.forEach((task, index) => {
+        const row = editor.createDiv({ cls: "evolution-recurring-row" });
+        const toggle = row.createEl("input", { type: "checkbox", attr: { "aria-label": t("Enabled") } });
+        toggle.checked = task.enabled;
+        toggle.addEventListener("change", () => { task.enabled = toggle.checked; void commit(); });
+        const text = row.createEl("input", { type: "text", value: task.text, attr: { placeholder: t("Task text"), "aria-label": t("Task text") } });
+        text.addEventListener("change", () => { task.text = text.value.trim(); void commit(); });
+        const frequency = row.createEl("select", { attr: { "aria-label": t("How often") } });
+        for (const key of RECURRING_FREQUENCIES) frequency.createEl("option", { value: key, text: t(FREQUENCY_LABEL[key]) });
+        frequency.value = task.frequency;
+        frequency.addEventListener("change", () => { task.frequency = frequency.value as RecurringFrequency; void commit(); });
+        const mode = row.createEl("select", { attr: { "aria-label": t("What to do with the previous one") } });
+        for (const key of ["append", "replace"] as RecurringMode[]) mode.createEl("option", { value: key, text: t(MODE_LABEL[key]) });
+        mode.value = task.mode;
+        mode.addEventListener("change", () => { task.mode = mode.value as RecurringMode; void commit(); });
+        const remove = row.createEl("button", { cls: "evolution-open", attr: { "aria-label": t("Delete this"), title: t("Delete this") } });
+        setIcon(remove, "trash");
+        remove.addEventListener("click", () => {
+          list.splice(index, 1);
+          void this.plugin.saveSettings().then(rerender);
+        });
+      });
+      const footer = editor.createDiv({ cls: "evolution-recurring-editor__footer" });
+      const add = footer.createEl("button", { cls: "mod-cta", text: t("+ Add recurring task") });
+      add.addEventListener("click", () => {
+        this.plugin.settings.recurring.tasks.push({ id: newRecurringId(), text: "", frequency: "daily", mode: "append", enabled: true, lastRun: "" });
+        void this.plugin.saveSettings().then(rerender);
+      });
+      // 刚从主页那条按钮过来的时候，新任务在列表最后还是空的，直接把光标放进去。
+      const boxes = editor.querySelectorAll<HTMLInputElement>("input[type=text]");
+      const last = boxes[boxes.length - 1];
+      if (last && !last.value) last.focus();
+    };
+    rerender();
+
+    textSetting(root, t("Market holidays"), t("Comma-separated dates (YYYY-MM-DD) when the market is closed. Trading-day tasks skip these. Chinese public holidays are built in and editable here — official dates for a new year are usually published each November, so add them once they are out."),
+      this.plugin.settings.recurring.marketHolidays.join(", "), async (value) => {
+        this.plugin.settings.recurring.marketHolidays = normalizeRecurring({ marketHolidays: splitPaths(value) }).marketHolidays;
+        await this.plugin.saveSettings();
+      });
   }
 
   private projectSettings(root: HTMLElement): void {
@@ -2118,8 +2472,68 @@ function todayIso(): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
+// ---- 日记定位（视图和插件都要用，所以放在模块的公共区） --------------------
+// 周期任务要在打开 Obsidian 时自动落到日记里，那时主页视图可能压根没打开，
+// 这套定位因此不能挂在视图上，插件层也得调得动。
+
+/** 读核心「日记」插件的选项；插件没启用或没填就返回 null，交给调用方回落。 */
+function coreDailyOption(app: App, key: string): string | null {
+  const host = app as App & {
+    internalPlugins?: {
+      getPluginById: (id: string) => { enabled?: boolean; instance?: { options?: Record<string, unknown> } } | null;
+    };
+  };
+  const plugin = host.internalPlugins?.getPluginById("daily-notes");
+  if (!plugin?.enabled) return null;
+  const value = plugin.instance?.options?.[key];
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+/** 核心插件存的目录末尾自带当前年份，去掉那一段，让 yearPattern 重新拼。 */
+function coreDailyFolder(app: App): string {
+  return String(coreDailyOption(app, "folder") ?? "").replace(/\/\d{4}(年)?$/, "");
+}
+
+/** 某一天日记所在目录：基础目录 + 年份子目录，空目录说明还没配好。 */
+function diaryFolderFor(app: App, settings: EvolutionSettings, date: Date): string {
+  const base = formatPath(settings.diary.folder.trim() || coreDailyFolder(app), date);
+  const year = formatPath(settings.diary.yearPattern, date);
+  return [base, year].map((part) => part.replace(/^\/+|\/+$/g, "")).filter(Boolean).join("/");
+}
+
+/** 某一天日记的路径：目录 + 文件名，格式都来自设置（留空则回落核心插件）。 */
+function diaryPathFor(app: App, settings: EvolutionSettings, date: Date): string {
+  const folder = diaryFolderFor(app, settings, date);
+  const name = formatDate(date, settings.diary.dateFormat.trim() || coreDailyOption(app, "format") || "YYYY.MM.DD");
+  return normalizePath(folder ? `${folder}/${name}.md` : `${name}.md`);
+}
+
+/** 拿到某一天的日记：有就直接返回，没有就按模板新建一份（不打开）。 */
+async function ensureDiaryFor(app: App, settings: EvolutionSettings, date: Date): Promise<TFile> {
+  const path = diaryPathFor(app, settings, date);
+  const existing = app.vault.getAbstractFileByPath(path);
+  if (existing instanceof TFile) return existing;
+  const folder = path.includes("/") ? path.substring(0, path.lastIndexOf("/")) : "";
+  if (folder) await ensureFolder(app, folder);
+  const templatePath = settings.diary.template.trim() || coreDailyOption(app, "template") || "";
+  const template = templatePath ? app.vault.getAbstractFileByPath(normalizePath(templatePath)) : null;
+  const content = template instanceof TFile
+    ? applyDateTemplate(await app.vault.read(template), date)
+    : `# ${formatDate(date, settings.diary.dateFormat.trim() || "YYYY.MM.DD")}\n`;
+  return await app.vault.create(path, content);
+}
+
+/** 往笔记末尾追加一行，顺手把文件末尾多余的空行收掉。 */
+async function appendLineTo(app: App, file: TFile, line: string): Promise<void> {
+  await app.vault.process(file, (content) => {
+    const newline = detectNewline(content);
+    const body = content.replace(/\s+$/, "");
+    return body ? `${body}${newline}${line}${newline}` : `${line}${newline}`;
+  });
+}
+
 /** 把笔记里的一行任务文本拆成正文明文 + 截止时间 + 优先级。 */
-function parseTaskLine(rest: string): { raw: string; text: string; due: string; priority: TaskPriority | ""; done: string; repeat: string; scheduled: string; start: string } {
+function parseTaskLine(rest: string): { raw: string; text: string; due: string; priority: TaskPriority | ""; done: string; repeat: string; scheduled: string; start: string; recurringId: string } {
   const raw = rest.trim();
   let priority: TaskPriority | "" = "";
   for (const key of PRIORITY_ORDER) {
@@ -2145,7 +2559,10 @@ function parseTaskLine(rest: string): { raw: string; text: string; due: string; 
     .replace(/\[priority::[^\]]*\]/gi, " ")
     .replace(/\s{2,}/g, " ")
     .trim();
-  return { raw, text: text || raw, due, priority, done, repeat, scheduled, start };
+  // 周期任务自己写的那行带着 🆔 evo<id>。正文里会把它清掉，但 id 要留着，
+  // 好让列表知道这一条是自动生成的、按哪个频率重复。
+  const recurringId = raw.match(/🆔\s*evo([A-Za-z0-9]+)/)?.[1] ?? "";
+  return { raw, text: text || raw, due, priority, done, repeat, scheduled, start, recurringId };
 }
 
 /**
